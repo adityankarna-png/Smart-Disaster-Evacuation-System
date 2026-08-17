@@ -76,21 +76,87 @@ public class VictimDAO {
         return victims;
     }
 
+    // ==========================================
+// DELETE VICTIM
+// ==========================================
+
     public void deleteVictim(int victimId) {
 
-        String sql = "DELETE FROM victims WHERE victim_id = ?";
+        String deleteEvacuations =
+                "DELETE FROM evacuations WHERE victim_id = ?";
 
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        String deleteVictim =
+                "DELETE FROM victims WHERE victim_id = ?";
 
-            statement.setInt(1, victimId);
+        try (Connection connection = DBConnection.getConnection()) {
 
-            statement.executeUpdate();
+            // Start transaction
+            connection.setAutoCommit(false);
 
-            System.out.println("Victim deleted successfully!");
+            try (
+                    PreparedStatement evacuationStatement =
+                            connection.prepareStatement(deleteEvacuations);
+
+                    PreparedStatement victimStatement =
+                            connection.prepareStatement(deleteVictim)
+            ) {
+
+                // ==========================================
+                // FIRST DELETE EVACUATION RECORDS
+                // ==========================================
+
+                evacuationStatement.setInt(1, victimId);
+
+                evacuationStatement.executeUpdate();
+
+
+                // ==========================================
+                // THEN DELETE VICTIM
+                // ==========================================
+
+                victimStatement.setInt(1, victimId);
+
+                int rowsDeleted =
+                        victimStatement.executeUpdate();
+
+
+                // ==========================================
+                // COMMIT
+                // ==========================================
+
+                connection.commit();
+
+                if (rowsDeleted > 0) {
+
+                    System.out.println(
+                            "Victim deleted successfully!"
+                    );
+
+                } else {
+
+                    System.out.println(
+                            "Victim not found."
+                    );
+                }
+
+            } catch (Exception e) {
+
+                // Roll back if anything fails
+                connection.rollback();
+
+                System.out.println(
+                        "Error deleting victim."
+                );
+
+                e.printStackTrace();
+            }
 
         } catch (Exception e) {
-            System.out.println("Error deleting victim.");
+
+            System.out.println(
+                    "Database connection error while deleting victim."
+            );
+
             e.printStackTrace();
         }
     }
