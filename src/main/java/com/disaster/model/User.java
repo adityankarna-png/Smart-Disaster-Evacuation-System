@@ -7,22 +7,28 @@ public class User {
     private String username;
     private String password;
     private String role;
+    private Integer victimId;
 
     public User() {
     }
 
-    public User(
-            int userId,
-            String name,
-            String username,
-            String password,
-            String role
-    ) {
+    public User(int userId, String name, String username,
+                String password, String role) {
         this.userId = userId;
         this.name = name;
         this.username = username;
         this.password = password;
         this.role = role;
+    }
+
+    public User(int userId, String name, String username,
+                String password, String role, Integer victimId) {
+        this.userId = userId;
+        this.name = name;
+        this.username = username;
+        this.password = password;
+        this.role = role;
+        this.victimId = victimId;
     }
 
     public int getUserId() {
@@ -65,14 +71,22 @@ public class User {
         this.role = role;
     }
 
+    public Integer getVictimId() {
+        return victimId;
+    }
+
+    public void setVictimId(Integer victimId) {
+        this.victimId = victimId;
+    }
+
     @Override
     public String toString() {
-
         return "User{" +
                 "userId=" + userId +
                 ", name='" + name + '\'' +
                 ", username='" + username + '\'' +
                 ", role='" + role + '\'' +
+                ", victimId=" + victimId +
                 '}';
     }
 }

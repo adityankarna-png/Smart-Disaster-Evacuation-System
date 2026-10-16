@@ -4,1502 +4,1616 @@ import com.disaster.dao.VictimDAO;
 import com.disaster.model.Victim;
 
 import javax.swing.*;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
+import javax.swing.border.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.table.*;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
+import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 
-/**
- * Polished Victim Management panel.
- *
- * Visual language intentionally matches ShelterPanel:
- * - light slate background
- * - white rounded card
- * - blue count badge
- * - clean table with alternating rows
- * - rounded action buttons
- * - soft status/priority chips
- *
- * Database behaviour is kept intact: load, add, update and delete victims.
- */
 public class VictimPanel extends JPanel {
 
-    // =========================================================
-    // DESIGN TOKENS — same visual system as ShelterPanel
-    // =========================================================
+    private static final Color BG       = new Color(0x08, 0x18, 0x21);
+    private static final Color PANEL    = new Color(0x13, 0x2B, 0x3B);
+    private static final Color PANEL2   = new Color(0x18, 0x35, 0x4A);
+    private static final Color PANEL3   = new Color(0x1B, 0x3D, 0x55);
+    private static final Color LINE     = new Color(0x2A, 0x4D, 0x63);
+    private static final Color TEXT     = new Color(0xE8, 0xF0, 0xF6);
+    private static final Color MUTED    = new Color(0x8D, 0xA2, 0xB3);
 
-    private static final Color BACKGROUND   = new Color(0xF1, 0xF5, 0xF9);
-    private static final Color SURFACE      = Color.WHITE;
-    private static final Color ROW_ALT      = new Color(0xF8, 0xFA, 0xFC);
-    private static final Color BORDER_SOFT  = new Color(0xE2, 0xE8, 0xF0);
-    private static final Color HEADER_BG    = new Color(0xF8, 0xFA, 0xFC);
-    private static final Color TEXT         = new Color(0x0F, 0x17, 0x2A);
-    private static final Color TEXT_SUBTLE  = new Color(0x47, 0x55, 0x69);
-    private static final Color TEXT_MUTED   = new Color(0x64, 0x74, 0x8B);
-    private static final Color SELECTION_BG = new Color(0xDB, 0xEA, 0xFE);
+    private static final Color BLUE     = new Color(0x55, 0xB4, 0xFF);
+    private static final Color RED      = new Color(0xFF, 0x5B, 0x68);
+    private static final Color AMBER    = new Color(0xF4, 0xB4, 0x4B);
+    private static final Color GREEN    = new Color(0x3D, 0xD4, 0xA0);
+    private static final Color ORANGE   = new Color(0xFF, 0x8A, 0x3D);
+    private static final Color TEAL    = GREEN;
 
-    private static final Color BLUE         = new Color(0x25, 0x63, 0xEB);
-    private static final Color BLUE_HOVER   = new Color(0x1D, 0x4E, 0xD8);
-    private static final Color GREEN        = new Color(0x16, 0xA3, 0x4A);
-    private static final Color ORANGE       = new Color(0xEA, 0x8A, 0x04);
-    private static final Color RED          = new Color(0xDC, 0x26, 0x26);
-    private static final Color RED_HOVER    = new Color(0xB9, 0x1C, 0x1C);
-    private static final Color NEUTRAL      = new Color(0x47, 0x55, 0x69);
-    private static final Color NEUTRAL_HOVER= new Color(0x33, 0x41, 0x55);
+    private static final Color BLUE_SOFT  = new Color(0x18, 0x3D, 0x59);
+    private static final Color RED_SOFT   = new Color(0x4B, 0x26, 0x31);
+    private static final Color AMBER_SOFT = new Color(0x4A, 0x3B, 0x20);
+    private static final Color GREEN_SOFT = new Color(0x19, 0x42, 0x37);
+    private static final Color SEL        = new Color(0x21, 0x4B, 0x6A);
 
-    private static final Color GREEN_SOFT   = new Color(0xDC, 0xFC, 0xE7);
-    private static final Color GREEN_TEXT   = new Color(0x15, 0x80, 0x3D);
-    private static final Color ORANGE_SOFT  = new Color(0xFE, 0xF3, 0xC7);
-    private static final Color ORANGE_TEXT  = new Color(0xB4, 0x53, 0x09);
-    private static final Color RED_SOFT     = new Color(0xFE, 0xE2, 0xE2);
-    private static final Color RED_TEXT     = new Color(0xB9, 0x1C, 0x1C);
-
-    // =========================================================
-    // FONTS
-    // =========================================================
-
-    private static final String FONT_FAMILY = resolveFontFamily();
-
-    private static String resolveFontFamily() {
-        String[] preferred = {
-                "Segoe UI", "SF Pro Text", "SF Pro Display",
-                "Helvetica Neue", "Roboto", "Inter", "Arial"
-        };
-
-        java.util.Set<String> available = new java.util.HashSet<>();
-        for (String f : GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getAvailableFontFamilyNames()) {
-            available.add(f);
-        }
-
-        for (String f : preferred) {
-            if (available.contains(f)) {
-                return f;
-            }
-        }
-
-        return Font.SANS_SERIF;
-    }
-
-    private static Font font(int style, int size) {
-        return new Font(FONT_FAMILY, style, size);
-    }
-
-    // =========================================================
-    // COMPONENTS / STATE
-    // =========================================================
+    private static final Font SANS_BOLD14  = new Font("Segoe UI", Font.BOLD, 14);
+    private static final Font SANS_BOLD12  = new Font("Segoe UI", Font.BOLD, 12);
+    private static final Font SANS_PLAIN13 = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font SANS_PLAIN12 = new Font("Segoe UI", Font.PLAIN, 12);
+    private static final Font MONO12       = new Font("Consolas", Font.PLAIN, 12);
+    private static final Font SANS_BOLD22  = new Font("Segoe UI", Font.BOLD, 22);
 
     private JTable victimTable;
     private DefaultTableModel tableModel;
-    private JLabel victimCountLabel;
-    private final VictimDAO victimDAO;
-    private JTextField searchField;
+    private TableRowSorter<DefaultTableModel> sorter;
+    private VictimDAO victimDAO;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
+    private JLabel victimCountLabel;
+    private JLabel allVictimsValue;
+    private JLabel criticalVictimsValue;
+    private JLabel highVictimsValue;
+    private JLabel lowVictimsValue;
+    private JLabel footerLabel;
+
+    private JTextField searchField;
 
     public VictimPanel() {
         victimDAO = new VictimDAO();
 
         setLayout(new BorderLayout());
-        setBackground(BACKGROUND);
-        setBorder(new EmptyBorder(24, 28, 24, 28));
+        setBackground(BG);
+        setBorder(new EmptyBorder(10, 28, 10, 28));
 
-        add(buildHeader(), BorderLayout.NORTH);
-        add(buildCard(), BorderLayout.CENTER);
+        add(buildTop(), BorderLayout.NORTH);
+        add(buildMain(), BorderLayout.CENTER);
 
         loadVictims();
     }
 
-    // =========================================================
-    // HEADER
-    // =========================================================
+    private JPanel buildTop() {
+        JPanel top = new JPanel();
+        top.setOpaque(false);
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
 
-    private JPanel buildHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        header.setBorder(new EmptyBorder(0, 4, 20, 4));
+        JPanel titleRow = new JPanel(new BorderLayout());
+        titleRow.setOpaque(false);
 
-        JPanel titleGroup = new JPanel();
-        titleGroup.setOpaque(false);
-        titleGroup.setLayout(new BoxLayout(titleGroup, BoxLayout.Y_AXIS));
+        JPanel titles = new JPanel();
+        titles.setOpaque(false);
+        titles.setLayout(new BoxLayout(titles, BoxLayout.Y_AXIS));
 
-        JLabel titleLabel = new JLabel("Victim Management");
-        titleLabel.setFont(font(Font.BOLD, 26));
-        titleLabel.setForeground(TEXT);
-        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel title = new JLabel("Victim Management");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        title.setForeground(TEXT);
 
-        JLabel subtitleLabel = new JLabel(
+        JLabel subtitle = new JLabel(
                 "Manage registered victims and evacuation priority information");
-        subtitleLabel.setFont(font(Font.PLAIN, 14));
-        subtitleLabel.setForeground(TEXT_MUTED);
-        subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        subtitle.setFont(SANS_PLAIN13);
+        subtitle.setForeground(MUTED);
 
-        titleGroup.add(titleLabel);
-        titleGroup.add(Box.createVerticalStrut(6));
-        titleGroup.add(subtitleLabel);
+        titles.add(title);
+        titles.add(Box.createVerticalStrut(2));
+        titles.add(subtitle);
 
-        header.add(titleGroup, BorderLayout.WEST);
+        victimCountLabel = new JLabel("0 victims");
+        victimCountLabel.setFont(SANS_BOLD12);
+        victimCountLabel.setForeground(BLUE);
 
-        victimCountLabel = new JLabel("0 Victims");
-        victimCountLabel.setFont(font(Font.BOLD, 13));
-        victimCountLabel.setForeground(Color.WHITE);
+        RoundedPanel count = new RoundedPanel(22, BLUE_SOFT);
+        count.setLayout(new BorderLayout());
+        count.setBorder(new EmptyBorder(7, 13, 7, 13));
+        count.add(victimCountLabel);
 
-        BadgePanel badge = new BadgePanel(BLUE);
-        badge.setLayout(new BorderLayout());
-        badge.setBorder(new EmptyBorder(8, 16, 8, 16));
-        badge.add(victimCountLabel, BorderLayout.CENTER);
+        JPanel countWrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        countWrap.setOpaque(false);
+        countWrap.add(count);
 
-        JPanel badgeWrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        badgeWrap.setOpaque(false);
-        badgeWrap.add(badge);
+        titleRow.add(titles, BorderLayout.WEST);
+        titleRow.add(countWrap, BorderLayout.EAST);
 
-        header.add(badgeWrap, BorderLayout.EAST);
+        top.add(titleRow);
+        top.add(Box.createVerticalStrut(13));
+        top.add(buildStats());
 
-        return header;
+        return top;
     }
 
-    // =========================================================
-    // CARD
-    // =========================================================
+    private JPanel buildStats() {
+        JPanel stats = new JPanel(new GridLayout(1, 4, 10, 0));
+        stats.setOpaque(false);
+        stats.setPreferredSize(new Dimension(10, 78));
 
-    private JComponent buildCard() {
-        RoundedCard card = new RoundedCard(18, SURFACE);
+        allVictimsValue = statValue("0", BLUE);
+        criticalVictimsValue = statValue("0", RED);
+        highVictimsValue = statValue("0", AMBER);
+        lowVictimsValue = statValue("0", GREEN);
+
+        stats.add(createStatCard("All victims", allVictimsValue, "Registered", BLUE, true));
+        stats.add(createStatCard("Critical", criticalVictimsValue, "Score 20+", RED, false));
+        stats.add(createStatCard("High", highVictimsValue, "Score 10 to 19", AMBER, false));
+        stats.add(createStatCard("Low", lowVictimsValue, "Score under 10", GREEN, false));
+
+        return stats;
+    }
+
+    private JLabel statValue(String value, Color color) {
+        JLabel label = new JLabel(value);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 27));
+        label.setForeground(color);
+        return label;
+    }
+
+    private JPanel createStatCard(String title, JLabel value, String suffix,
+                                  Color accent, boolean selected) {
+        RoundedPanel card = new RoundedPanel(9, PANEL);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(8, 8, 8, 8));
+        card.setBorder(new CompoundBorder(
+                new LineBorder(selected ? BLUE : LINE, selected ? 2 : 1, true),
+                new EmptyBorder(9, 13, 9, 13)
+        ));
 
-        card.add(buildTable(), BorderLayout.CENTER);
-        card.add(buildActionBar(), BorderLayout.SOUTH);
+        JPanel left = new JPanel();
+        left.setOpaque(false);
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+
+        JPanel labelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        labelRow.setOpaque(false);
+
+        JLabel dot = new JLabel("■");
+        dot.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        dot.setForeground(accent);
+
+        JLabel label = new JLabel(title);
+        label.setFont(SANS_BOLD12);
+        label.setForeground(MUTED);
+
+        labelRow.add(dot);
+        labelRow.add(Box.createHorizontalStrut(6));
+        labelRow.add(label);
+
+        left.add(labelRow);
+        left.add(Box.createVerticalStrut(1));
+        left.add(value);
+
+        JLabel suffixLabel = new JLabel(suffix);
+        suffixLabel.setFont(SANS_PLAIN12);
+        suffixLabel.setForeground(MUTED);
+
+        card.add(left, BorderLayout.CENTER);
+        card.add(suffixLabel, BorderLayout.EAST);
 
         return card;
     }
 
-    // =========================================================
-    // TABLE
-    // =========================================================
+    private JPanel buildMain() {
+        JPanel main = new JPanel(new BorderLayout(0, 12));
+        main.setOpaque(false);
+        main.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-    private JComponent buildTable() {
+        main.add(buildToolbar(), BorderLayout.NORTH);
+        main.add(buildTableCard(), BorderLayout.CENTER);
 
-        String[] columns = {
-                "Victim ID",
-                "Name",
-                "Age",
-                "Medical Condition",
-                "Vulnerability",
-                "Zone Risk",
-                "Waiting Time",
-                "Priority",
-                "Status"
-        };
-
-        tableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        victimTable = new JTable(tableModel) {
-            @Override
-            public Component prepareRenderer(
-                    javax.swing.table.TableCellRenderer renderer,
-                    int row,
-                    int column) {
-
-                Component c = super.prepareRenderer(renderer, row, column);
-
-                if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? SURFACE : ROW_ALT);
-                }
-
-                return c;
-            }
-        };
-
-        victimTable.setRowHeight(40);
-        victimTable.setFont(font(Font.PLAIN, 13));
-        victimTable.setForeground(TEXT_SUBTLE);
-        victimTable.setBackground(SURFACE);
-        victimTable.setShowGrid(false);
-        victimTable.setIntercellSpacing(new Dimension(0, 0));
-        victimTable.setFillsViewportHeight(true);
-        victimTable.setSelectionBackground(SELECTION_BG);
-        victimTable.setSelectionForeground(TEXT);
-        victimTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        victimTable.setAutoCreateRowSorter(true);
-
-        // Header
-        JTableHeader th = victimTable.getTableHeader();
-        th.setFont(font(Font.BOLD, 12));
-        th.setBackground(HEADER_BG);
-        th.setForeground(TEXT_MUTED);
-        th.setPreferredSize(new Dimension(0, 44));
-        th.setReorderingAllowed(false);
-        th.setBorder(BorderFactory.createMatteBorder(
-                0, 0, 1, 0, BORDER_SOFT));
-
-        if (th.getDefaultRenderer() instanceof DefaultTableCellRenderer) {
-            ((DefaultTableCellRenderer) th.getDefaultRenderer())
-                    .setHorizontalAlignment(SwingConstants.LEFT);
-        }
-
-        // Column widths
-        int[] widths = {
-                85, 155, 55, 180, 105, 90, 105, 125, 125
-        };
-
-        for (int i = 0; i < widths.length; i++) {
-            victimTable.getColumnModel().getColumn(i)
-                    .setPreferredWidth(widths[i]);
-        }
-
-        // Text renderers
-        DefaultTableCellRenderer left = new DefaultTableCellRenderer();
-        left.setBorder(new EmptyBorder(0, 16, 0, 16));
-
-        for (int i = 0; i < columns.length; i++) {
-            victimTable.getColumnModel().getColumn(i)
-                    .setCellRenderer(left);
-        }
-
-        // Specific renderers
-        victimTable.getColumnModel().getColumn(0)
-                .setCellRenderer(new IdRenderer());
-
-        victimTable.getColumnModel().getColumn(2)
-                .setCellRenderer(new CenterRenderer());
-
-        victimTable.getColumnModel().getColumn(4)
-                .setCellRenderer(new ScoreRenderer(7, 4));
-
-        victimTable.getColumnModel().getColumn(5)
-                .setCellRenderer(new ScoreRenderer(3, 2));
-
-        victimTable.getColumnModel().getColumn(6)
-                .setCellRenderer(new CenterRenderer());
-
-        victimTable.getColumnModel().getColumn(7)
-                .setCellRenderer(new PriorityRenderer());
-
-        victimTable.getColumnModel().getColumn(8)
-                .setCellRenderer(new StatusRenderer());
-
-        JScrollPane scrollPane = new JScrollPane(victimTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(SURFACE);
-        scrollPane.setBackground(SURFACE);
-
-        return scrollPane;
+        return main;
     }
 
-    // =========================================================
-    // ACTION BAR
-    // =========================================================
-
-    private JComponent buildActionBar() {
-
+    private JPanel buildToolbar() {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setOpaque(false);
-        bar.setBorder(new EmptyBorder(14, 12, 10, 12));
+        bar.setPreferredSize(new Dimension(10, 38));
 
-        // Search is kept from the original VictimPanel functionality.
         searchField = new JTextField();
-        searchField.setFont(font(Font.PLAIN, 13));
-        searchField.setForeground(TEXT_SUBTLE);
-        searchField.setBackground(SURFACE);
+        searchField.setFont(SANS_PLAIN12);
+        searchField.setForeground(TEXT);
+        searchField.setBackground(PANEL2);
+        searchField.setCaretColor(BLUE);
         searchField.setBorder(new CompoundBorder(
-                BorderFactory.createLineBorder(BORDER_SOFT, 1),
-                new EmptyBorder(8, 12, 8, 12)
+                new LineBorder(LINE, 1, true),
+                new EmptyBorder(6, 12, 6, 12)
         ));
-        searchField.setPreferredSize(new Dimension(220, 38));
+        searchField.setPreferredSize(new Dimension(312, 37));
+        searchField.setToolTipText("Search victims");
 
-        searchField.setText("Search victims...");
-        searchField.setForeground(TEXT_MUTED);
-
-        searchField.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
-                if ("Search victims...".equals(searchField.getText())) {
-                    searchField.setText("");
-                    searchField.setForeground(TEXT_SUBTLE);
-                }
-            }
-
-            @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
-                if (searchField.getText().trim().isEmpty()) {
-                    searchField.setText("Search victims...");
-                    searchField.setForeground(TEXT_MUTED);
-                }
-            }
-        });
-
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                filterTable();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                filterTable();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                filterTable();
-            }
-        });
-
-        JPanel searchWrap = new JPanel(new FlowLayout(
-                FlowLayout.LEFT, 0, 0));
+        JPanel searchWrap = new JPanel(new BorderLayout());
         searchWrap.setOpaque(false);
+        searchWrap.setPreferredSize(new Dimension(315, 37));
         searchWrap.add(searchField);
 
-        JPanel buttonRow = new JPanel(new FlowLayout(
-                FlowLayout.RIGHT, 10, 0));
-        buttonRow.setOpaque(false);
-
-        JButton refreshButton =
-                ghostButton("Refresh");
-
-        JButton updateButton =
-                pillButton("Update Victim",
-                        NEUTRAL, NEUTRAL_HOVER, true);
-
-        JButton deleteButton =
-                pillButton("Delete Victim",
-                        RED, RED_HOVER, true);
-
-        JButton addButton =
-                pillButton("Add Victim",
-                        BLUE, BLUE_HOVER, true);
-
-        buttonRow.add(refreshButton);
-        buttonRow.add(updateButton);
-        buttonRow.add(deleteButton);
-        buttonRow.add(addButton);
+        JLabel hint = new JLabel("Most urgent first. Click a column to sort.");
+        hint.setFont(SANS_PLAIN12);
+        hint.setForeground(MUTED);
 
         bar.add(searchWrap, BorderLayout.WEST);
-        bar.add(buttonRow, BorderLayout.EAST);
+        bar.add(hint, BorderLayout.EAST);
 
-        refreshButton.addActionListener(e -> loadVictims());
-        updateButton.addActionListener(e -> showUpdateVictimDialog());
-        deleteButton.addActionListener(e -> deleteVictim());
-        addButton.addActionListener(e -> showAddVictimDialog());
-
-        victimTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 2
-                        && SwingUtilities.isLeftMouseButton(e)) {
-                    showUpdateVictimDialog();
-                }
-            }
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { filterTable(); }
+            public void removeUpdate(DocumentEvent e) { filterTable(); }
+            public void changedUpdate(DocumentEvent e) { filterTable(); }
         });
 
         return bar;
     }
 
-    // =========================================================
-    // BUTTON FACTORIES
-    // =========================================================
+    private JPanel buildTableCard() {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
 
-    private JButton pillButton(
-            String text,
-            Color base,
-            Color hover,
-            boolean lightText) {
+        RoundedPanel card = new RoundedPanel(11, PANEL);
+        card.setLayout(new BorderLayout());
+        card.setBorder(new EmptyBorder(0, 5, 0, 5));
 
-        PillButton button = new PillButton(base, hover, 10);
-        button.setText(text);
-        button.setFont(font(Font.BOLD, 13));
-        button.setForeground(lightText ? Color.WHITE : TEXT);
-        button.setBorder(new EmptyBorder(10, 20, 10, 20));
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        card.add(buildTable(), BorderLayout.CENTER);
+        card.add(buildActionBar(), BorderLayout.SOUTH);
+
+        wrapper.add(card, BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JScrollPane buildTable() {
+        String[] cols = {
+                "ID", "NAME", "AGE", "MEDICAL CONDITION",
+                "VULNERABILITY", "ZONE RISK", "WAITING", "PRIORITY", "STATUS"
+        };
+
+        tableModel = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+
+            @Override
+            public Class<?> getColumnClass(int column) {
+                if (column == 0 || column == 2 || column == 4 ||
+                        column == 5 || column == 6 || column == 7) {
+                    return Integer.class;
+                }
+                return String.class;
+            }
+        };
+
+        victimTable = new JTable(tableModel);
+        sorter = new TableRowSorter<>(tableModel);
+        victimTable.setRowSorter(sorter);
+
+        styleTable();
+
+        int[] widths = {58, 190, 58, 190, 145, 120, 95, 135, 125};
+        for (int i = 0; i < widths.length; i++) {
+            victimTable.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
+
+        victimTable.getColumnModel().getColumn(0).setCellRenderer(new IdRenderer());
+        victimTable.getColumnModel().getColumn(1).setCellRenderer(new NameRenderer());
+        victimTable.getColumnModel().getColumn(2).setCellRenderer(new CenterRenderer());
+        victimTable.getColumnModel().getColumn(3).setCellRenderer(new MedicalRenderer());
+        victimTable.getColumnModel().getColumn(4).setCellRenderer(new RiskRenderer());
+        victimTable.getColumnModel().getColumn(5).setCellRenderer(new RiskRenderer());
+        victimTable.getColumnModel().getColumn(6).setCellRenderer(new CenterRenderer());
+        victimTable.getColumnModel().getColumn(7).setCellRenderer(new PriorityPillRenderer());
+        victimTable.getColumnModel().getColumn(8).setCellRenderer(new StatusPillRenderer());
+
+        victimTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e)) {
+                    showUpdateVictimDialog();
+                }
+            }
+        });
+
+        victimTable.getInputMap(JComponent.WHEN_FOCUSED)
+                .put(KeyStroke.getKeyStroke("DELETE"), "deleteVictim");
+        victimTable.getActionMap().put("deleteVictim", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deleteVictim();
+            }
+        });
+
+        victimTable.getInputMap(JComponent.WHEN_FOCUSED)
+                .put(KeyStroke.getKeyStroke("ENTER"), "updateVictim");
+        victimTable.getActionMap().put("updateVictim", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showUpdateVictimDialog();
+            }
+        });
+
+        JScrollPane scroll = new JScrollPane(victimTable);
+        scroll.setBorder(new EmptyBorder(0, 0, 0, 0));
+        scroll.getViewport().setBackground(PANEL);
+        scroll.setBackground(PANEL);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        JScrollBar vs = scroll.getVerticalScrollBar();
+        vs.setPreferredSize(new Dimension(9, 0));
+        vs.setBackground(PANEL);
+        vs.setUI(new ThinScrollBarUI());
+
+        return scroll;
+    }
+
+    private void styleTable() {
+        victimTable.setFont(SANS_PLAIN13);
+        victimTable.setForeground(TEXT);
+        victimTable.setBackground(PANEL);
+        victimTable.setRowHeight(46);
+        victimTable.setShowGrid(false);
+        victimTable.setIntercellSpacing(new Dimension(0, 0));
+        victimTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        victimTable.setSelectionBackground(SEL);
+        victimTable.setSelectionForeground(TEXT);
+        victimTable.setFillsViewportHeight(true);
+        victimTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+
+        JTableHeader th = victimTable.getTableHeader();
+        th.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        th.setBackground(PANEL2);
+        th.setForeground(MUTED);
+        th.setPreferredSize(new Dimension(0, 42));
+        th.setReorderingAllowed(false);
+        th.setResizingAllowed(false);
+        th.setBorder(new MatteBorder(0, 0, 1, 0, LINE));
+        th.setDefaultRenderer(new HeaderRenderer());
+
+        sorter.setSortKeys(List.of(
+                new RowSorter.SortKey(7, SortOrder.DESCENDING)
+        ));
+    }
+
+    private JPanel buildActionBar() {
+        JPanel bar = new JPanel(new BorderLayout());
+        bar.setOpaque(false);
+        bar.setBorder(new EmptyBorder(12, 2, 10, 2));
+
+        footerLabel = new JLabel("Showing 0 of 0 victims");
+        footerLabel.setFont(SANS_PLAIN12);
+        footerLabel.setForeground(MUTED);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        buttons.setOpaque(false);
+
+        JButton refresh = makeButton("Refresh", PANEL2, PANEL3, TEXT, false);
+        JButton add = makeButton("Add victim", BLUE, new Color(0x73, 0xC4, 0xFF),
+                new Color(0x06, 0x22, 0x3A), false);
+        JButton update = makeButton("Update victim", PANEL2, PANEL3, TEXT, false);
+        JButton delete = makeButton("Delete victim", new Color(0x5A, 0x20, 0x29),
+                new Color(0x74, 0x30, 0x3A), RED, true);
+
+        buttons.add(refresh);
+        buttons.add(add);
+        buttons.add(update);
+        buttons.add(delete);
+
+        refresh.addActionListener(e -> {
+            loadVictims();
+            footerLabel.setText("Victims refreshed.");
+        });
+        add.addActionListener(e -> showAddVictimDialog());
+        update.addActionListener(e -> showUpdateVictimDialog());
+        delete.addActionListener(e -> deleteVictim());
+
+        bar.add(footerLabel, BorderLayout.WEST);
+        bar.add(buttons, BorderLayout.EAST);
+
+        return bar;
+    }
+
+    private JButton makeButton(String text, Color bg, Color hover,
+                               Color fg, boolean outline) {
+        JButton button = new JButton(text) {
+            private boolean hovering;
+
+            {
+                addMouseListener(new MouseAdapter() {
+                    @Override public void mouseEntered(MouseEvent e) {
+                        hovering = true;
+                        repaint();
+                    }
+                    @Override public void mouseExited(MouseEvent e) {
+                        hovering = false;
+                        repaint();
+                    }
+                });
+            }
+
+            @Override
+            protected void paintComponent(Graphics g0) {
+                Graphics2D g = (Graphics2D) g0.create();
+                aa(g);
+
+                g.setColor(hovering ? hover : bg);
+                g.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+
+                if (outline) {
+                    g.setColor(RED);
+                    g.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                }
+
+                g.dispose();
+                super.paintComponent(g0);
+            }
+        };
+
+        button.setFont(SANS_BOLD12);
+        button.setForeground(fg);
+        button.setFocusPainted(false);
+        button.setContentAreaFilled(false);
+        button.setOpaque(false);
+        button.setBorder(new EmptyBorder(9, 16, 9, 16));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         return button;
     }
 
-    private JButton ghostButton(String text) {
-
-        PillButton button = new PillButton(
-                SURFACE,
-                new Color(0xF1, 0xF5, 0xF9),
-                10
-        );
-
-        button.setText(text);
-        button.setFont(font(Font.BOLD, 13));
-        button.setForeground(TEXT_SUBTLE);
-        button.setOutline(BORDER_SOFT);
-        button.setBorder(new EmptyBorder(10, 20, 10, 20));
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        return button;
+    private static void aa(Graphics2D g) {
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
 
-    // =========================================================
-    // LOAD VICTIMS
-    // =========================================================
+    private static class HeaderRenderer extends DefaultTableCellRenderer {
+        HeaderRenderer() {
+            setHorizontalAlignment(SwingConstants.LEFT);
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+            super.getTableCellRendererComponent(
+                    table, value, selected, focused, row, column);
+            setFont(new Font("Segoe UI", Font.BOLD, 11));
+            setForeground(MUTED);
+            setBackground(PANEL2);
+            setBorder(new EmptyBorder(0, 10, 0, 10));
+            return this;
+        }
+    }
+
+    private static class BaseRenderer extends DefaultTableCellRenderer {
+        BaseRenderer(int align) {
+            setHorizontalAlignment(align);
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+            super.getTableCellRendererComponent(
+                    table, value, selected, focused, row, column);
+
+            setFont(SANS_PLAIN13);
+            setForeground(TEXT);
+            setBackground(selected ? SEL : (row % 2 == 0 ? PANEL : BG));
+            setBorder(new EmptyBorder(0, 10, 0, 10));
+            return this;
+        }
+    }
+
+    private static class IdRenderer extends BaseRenderer {
+        IdRenderer() {
+            super(SwingConstants.CENTER);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+            super.getTableCellRendererComponent(
+                    table, value, selected, focused, row, column);
+            setFont(MONO12);
+            setForeground(selected ? TEXT : BLUE);
+            return this;
+        }
+    }
+
+    private static class CenterRenderer extends BaseRenderer {
+        CenterRenderer() {
+            super(SwingConstants.CENTER);
+        }
+    }
+
+    private static class MedicalRenderer extends BaseRenderer {
+        MedicalRenderer() {
+            super(SwingConstants.LEFT);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+            super.getTableCellRendererComponent(
+                    table, value, selected, focused, row, column);
+
+            String text = value == null ? "" : value.toString();
+
+            if (!"None".equalsIgnoreCase(text) && !text.isEmpty()) {
+                setText("●  " + text);
+                setForeground(selected ? TEXT : RED);
+            } else {
+                setText("None");
+                setForeground(selected ? TEXT : MUTED);
+            }
+
+            return this;
+        }
+    }
+
+    private static class NameRenderer extends JPanel
+            implements TableCellRenderer {
+
+        private final AvatarLabel avatar = new AvatarLabel();
+        private final JLabel name = new JLabel();
+
+        NameRenderer() {
+            setOpaque(true);
+            setLayout(new GridBagLayout());
+
+            GridBagConstraints a = new GridBagConstraints();
+            a.gridx = 0;
+            a.gridy = 0;
+            a.weightx = 0;
+            a.weighty = 1;
+            a.anchor = GridBagConstraints.CENTER;
+            a.insets = new Insets(0, 8, 0, 8);
+
+            GridBagConstraints n = new GridBagConstraints();
+            n.gridx = 1;
+            n.gridy = 0;
+            n.weightx = 1;
+            n.weighty = 1;
+            n.fill = GridBagConstraints.HORIZONTAL;
+            n.anchor = GridBagConstraints.WEST;
+            n.insets = new Insets(0, 0, 0, 8);
+
+            avatar.setPreferredSize(new Dimension(28, 28));
+            name.setFont(SANS_PLAIN13);
+            name.setForeground(TEXT);
+
+            add(avatar, a);
+            add(name, n);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+
+            String n = value == null ? "" : value.toString().trim();
+            name.setText(n);
+
+            String initials = "";
+            if (!n.isEmpty()) {
+                String[] parts = n.split("\\s+");
+
+                if (parts.length >= 2) {
+                    initials = String.valueOf(parts[0].charAt(0))
+                            + parts[parts.length - 1].charAt(0);
+                } else {
+                    initials = parts[0].length() >= 2
+                            ? parts[0].substring(0, 2)
+                            : parts[0];
+                }
+            }
+
+            avatar.setText(initials.toUpperCase());
+
+            Color rowColor = selected
+                    ? SEL
+                    : (row % 2 == 0 ? PANEL : BG);
+
+            setBackground(rowColor);
+            avatar.setSelected(selected);
+
+            return this;
+        }
+    }
+
+    private static class AvatarLabel extends JLabel {
+        private boolean selected;
+
+        AvatarLabel() {
+            super("", SwingConstants.CENTER);
+            setOpaque(false);
+            setFont(new Font("Segoe UI", Font.BOLD, 9));
+            setForeground(TEXT);
+        }
+
+        void setSelected(boolean selected) {
+            this.selected = selected;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            Graphics2D g = (Graphics2D) g0.create();
+            aa(g);
+
+            int size = Math.min(getWidth(), getHeight()) - 1;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
+
+            g.setColor(selected
+                    ? new Color(BLUE.getRed(), BLUE.getGreen(), BLUE.getBlue(), 85)
+                    : new Color(BLUE.getRed(), BLUE.getGreen(), BLUE.getBlue(), 45));
+            g.fillOval(x, y, size, size);
+
+            g.setColor(new Color(
+                    BLUE.getRed(), BLUE.getGreen(), BLUE.getBlue(), 150));
+            g.drawOval(x, y, size - 1, size - 1);
+
+            g.setFont(new Font("Segoe UI", Font.BOLD, 9));
+            g.setColor(TEXT);
+
+            FontMetrics fm = g.getFontMetrics();
+            String text = getText();
+            int tx = (getWidth() - fm.stringWidth(text)) / 2;
+            int ty = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+
+            g.drawString(text, tx, ty);
+
+            g.dispose();
+        }
+    }
+
+    private static class RiskRenderer extends JPanel
+            implements TableCellRenderer {
+
+        private int value;
+        private boolean selected;
+        private Color accent;
+
+        RiskRenderer() {
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+
+            try {
+                this.value = Integer.parseInt(String.valueOf(value));
+            } catch (Exception e) {
+                this.value = 0;
+            }
+
+            this.selected = selected;
+            this.accent = riskColor(this.value);
+            setBackground(selected ? SEL : (row % 2 == 0 ? PANEL : BG));
+
+            return this;
+        }
+
+        private static Color riskColor(int value) {
+            if (value >= 9) return RED;
+            if (value >= 6) return ORANGE;
+            if (value >= 4) return AMBER;
+            return GREEN;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            super.paintComponent(g0);
+
+            Graphics2D g = (Graphics2D) g0.create();
+            aa(g);
+
+            String valueText = String.valueOf(value);
+            g.setFont(new Font("Consolas", Font.BOLD, 12));
+
+            int valueWidth = 22;
+            int startX = getWidth() / 2 - 42;
+            int centerY = getHeight() / 2;
+
+            g.setColor(selected ? TEXT : accent);
+            g.drawString(valueText, startX, centerY + 5);
+
+            int barX = startX + valueWidth;
+            int barY = centerY - 3;
+            int barW = 65;
+            int barH = 6;
+            int gap = 2;
+
+            for (int i = 0; i < 10; i++) {
+                int x = barX + i * (barW / 10);
+                boolean active = i < value;
+
+                g.setColor(active
+                        ? accent
+                        : new Color(255, 255, 255, 25));
+
+                g.fillRoundRect(x, barY,
+                        Math.max(3, (barW / 10) - gap),
+                        barH, 3, 3);
+            }
+
+            g.dispose();
+        }
+    }
+
+    private static class PriorityPillRenderer extends JPanel
+            implements TableCellRenderer {
+
+        private String text = "";
+        private Color pillBg = PANEL2;
+        private Color pillFg = TEXT;
+        private boolean selected;
+
+        PriorityPillRenderer() {
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+
+            this.selected = selected;
+            setBackground(selected ? SEL : (row % 2 == 0 ? PANEL : BG));
+
+            int score = 0;
+            try {
+                score = Integer.parseInt(String.valueOf(value));
+            } catch (Exception ignored) {
+            }
+
+            if (score >= 20) {
+                text = score + "  CRITICAL";
+                pillBg = RED_SOFT;
+                pillFg = RED;
+            } else if (score >= 10) {
+                text = score + "  HIGH";
+                pillBg = AMBER_SOFT;
+                pillFg = AMBER;
+            } else {
+                text = score + "  LOW";
+                pillBg = GREEN_SOFT;
+                pillFg = GREEN;
+            }
+
+            return this;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            super.paintComponent(g0);
+
+            Graphics2D g = (Graphics2D) g0.create();
+            aa(g);
+
+            g.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            FontMetrics fm = g.getFontMetrics();
+
+            int w = fm.stringWidth(text) + 20;
+            int h = 22;
+            int x = (getWidth() - w) / 2;
+            int y = (getHeight() - h) / 2;
+
+            g.setColor(pillBg);
+            g.fillRoundRect(x, y, w, h, h, h);
+
+            g.setColor(pillFg);
+            g.drawString(text, x + 10,
+                    y + (h + fm.getAscent() - fm.getDescent()) / 2);
+
+            g.dispose();
+        }
+    }
+
+    private static class StatusPillRenderer extends JPanel
+            implements TableCellRenderer {
+
+        private String text = "";
+        private Color bg = AMBER_SOFT;
+        private Color fg = AMBER;
+
+        StatusPillRenderer() {
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean selected,
+                boolean focused, int row, int column) {
+
+            setBackground(selected ? SEL : (row % 2 == 0 ? PANEL : BG));
+            text = value == null ? "" : value.toString().toUpperCase();
+
+            if ("EVACUATED".equals(text) || "SAFE".equals(text)) {
+                bg = GREEN_SOFT;
+                fg = GREEN;
+            } else if ("CRITICAL".equals(text)) {
+                bg = RED_SOFT;
+                fg = RED;
+            } else {
+                bg = AMBER_SOFT;
+                fg = AMBER;
+            }
+
+            return this;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            super.paintComponent(g0);
+
+            Graphics2D g = (Graphics2D) g0.create();
+            aa(g);
+
+            g.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            FontMetrics fm = g.getFontMetrics();
+
+            int w = fm.stringWidth(text) + 22;
+            int h = 22;
+            int x = (getWidth() - w) / 2;
+            int y = (getHeight() - h) / 2;
+
+            g.setColor(bg);
+            g.fillRoundRect(x, y, w, h, h, h);
+
+            g.setColor(fg);
+            g.drawString(text, x + 11,
+                    y + (h + fm.getAscent() - fm.getDescent()) / 2);
+
+            g.dispose();
+        }
+    }
+
+    private static class RoundedPanel extends JPanel {
+        private final int arc;
+        private final Color fill;
+
+        RoundedPanel(int arc, Color fill) {
+            this.arc = arc;
+            this.fill = fill;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            Graphics2D g = (Graphics2D) g0.create();
+            aa(g);
+
+            g.setColor(fill);
+            g.fillRoundRect(0, 0,
+                    getWidth() - 1, getHeight() - 1,
+                    arc, arc);
+
+            g.setColor(LINE);
+            g.drawRoundRect(0, 0,
+                    getWidth() - 1, getHeight() - 1,
+                    arc, arc);
+
+            g.dispose();
+            super.paintComponent(g0);
+        }
+    }
+
+    private static class ThinScrollBarUI extends BasicScrollBarUI {
+        @Override
+        protected void configureScrollBarColors() {
+            thumbColor = new Color(0x3A, 0x5A, 0x70);
+            trackColor = PANEL;
+        }
+
+        @Override
+        protected JButton createDecreaseButton(int orientation) {
+            return zeroButton();
+        }
+
+        @Override
+        protected JButton createIncreaseButton(int orientation) {
+            return zeroButton();
+        }
+
+        private JButton zeroButton() {
+            JButton b = new JButton();
+            b.setPreferredSize(new Dimension(0, 0));
+            b.setMinimumSize(new Dimension(0, 0));
+            b.setMaximumSize(new Dimension(0, 0));
+            return b;
+        }
+    }
+
+
+    // Compatibility aliases used by the existing CRUD/dialog implementation.
+    private static final Color SURFACE = PANEL;
+    private static final Color SURFACE2 = PANEL2;
+    private static final Color BORDER_CLR = new Color(255, 255, 255, 25);
+    private static final Color TEAL_DIM = new Color(0, 201, 167, 30);
+    private static final Color RED_DIM = new Color(255, 91, 104, 35);
+    private static final Color AMBER_DIM = new Color(244, 180, 75, 35);
+    private static final Color GREEN_DIM = new Color(61, 212, 160, 35);
+    private static final Color SLATE = new Color(51, 65, 85);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DATA LOADING
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void loadVictims() {
-
         tableModel.setRowCount(0);
 
         try {
             List<Victim> victims = victimDAO.getAllVictims();
 
-            for (Victim victim : victims) {
+            int critical = 0;
+            int high = 0;
+            int low = 0;
+
+            for (Victim v : victims) {
                 tableModel.addRow(new Object[]{
-                        victim.getVictimId(),
-                        victim.getName(),
-                        victim.getAge(),
-                        victim.getMedicalCondition(),
-                        victim.getVulnerabilityScore(),
-                        victim.getZoneRisk(),
-                        victim.getWaitingTime(),
-                        victim.getPriorityScore(),
-                        victim.getStatus()
+                        v.getVictimId(),
+                        v.getName(),
+                        v.getAge(),
+                        v.getMedicalCondition(),
+                        v.getVulnerabilityScore(),
+                        v.getZoneRisk(),
+                        v.getWaitingTime(),
+                        v.getPriorityScore(),
+                        v.getStatus()
                 });
+
+                int score = v.getPriorityScore();
+
+                if (score >= 20) critical++;
+                else if (score >= 10) high++;
+                else low++;
             }
 
-            victimCountLabel.setText(victims.size() + " Victims");
+            victimCountLabel.setText(
+                    victims.size() + (victims.size() == 1 ? " victim" : " victims"));
+
+            allVictimsValue.setText(String.valueOf(victims.size()));
+            criticalVictimsValue.setText(String.valueOf(critical));
+            highVictimsValue.setText(String.valueOf(high));
+            lowVictimsValue.setText(String.valueOf(low));
+
+            if (sorter != null) {
+                sorter.setSortKeys(List.of(
+                        new RowSorter.SortKey(7, SortOrder.DESCENDING)
+                ));
+            }
+
+            footerLabel.setText(
+                    "Showing " + victims.size() + " of " + victims.size() + " victims");
+
+            filterTable();
 
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "Error loading victims:\n" + e.getMessage(),
                     "Database Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
-
-    // =========================================================
-    // SEARCH FILTER
-    // =========================================================
 
     private void filterTable() {
+        if (sorter == null || searchField == null) return;
 
-        if (tableModel == null || victimTable == null
-                || searchField == null) {
-            return;
-        }
+        String q = searchField.getText().trim();
 
-        String query = searchField.getText().trim();
-
-        if (query.equals("Search victims...")) {
-            query = "";
-        }
-
-        final String finalQuery = query;
-
-        if (!(victimTable.getRowSorter()
-                instanceof javax.swing.table.TableRowSorter)) {
-            return;
-        }
-
-        @SuppressWarnings("unchecked")
-        javax.swing.table.TableRowSorter<DefaultTableModel> sorter =
-                (javax.swing.table.TableRowSorter<DefaultTableModel>)
-                        victimTable.getRowSorter();
-
-        if (finalQuery.isEmpty()) {
+        if (q.isEmpty()) {
             sorter.setRowFilter(null);
-            return;
+        } else {
+            sorter.setRowFilter(RowFilter.regexFilter(
+                    "(?i)" + java.util.regex.Pattern.quote(q)));
         }
 
-        try {
-            sorter.setRowFilter(
-                    RowFilter.regexFilter(
-                            "(?i)" + java.util.regex.Pattern
-                                    .quote(finalQuery)
-                    )
-            );
-        } catch (Exception ignored) {
-            sorter.setRowFilter(null);
+        int visible = victimTable.getRowCount();
+        footerLabel.setText(
+                "Showing " + visible + " of " + tableModel.getRowCount() + " victims");
+    }
+
+
+    private static class RoundBorder extends AbstractBorder {
+        private final int arc;
+        private final Color color;
+
+        RoundBorder(int arc, Color color) {
+            this.arc = arc;
+            this.color = color;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            aa(g2);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, w - 1, h - 1, arc, arc);
+            g2.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(arc / 2, arc / 2, arc / 2, arc / 2);
         }
     }
 
-    // =========================================================
-    // DELETE VICTIM
-    // =========================================================
+    // ═══════════════════════════════════════════════════════════════════════
+    // DELETE
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void deleteVictim() {
-
-        int selectedRow = victimTable.getSelectedRow();
-
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(
-                    this,
+        int row = victimTable.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this,
                     "Please select a victim first.",
-                    "No Victim Selected",
-                    JOptionPane.WARNING_MESSAGE
-            );
+                    "No Victim Selected", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        int modelRow  = victimTable.convertRowIndexToModel(row);
+        int victimId  = (int) tableModel.getValueAt(modelRow, 0);
+        String name   = tableModel.getValueAt(modelRow, 1).toString();
 
-        int modelRow =
-                victimTable.convertRowIndexToModel(selectedRow);
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Remove \"" + name + "\" (ID #" + victimId + ") from the system?",
+                "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
-        int victimId =
-                Integer.parseInt(tableModel
-                        .getValueAt(modelRow, 0).toString());
-
-        String name =
-                String.valueOf(tableModel.getValueAt(modelRow, 1));
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Are you sure you want to delete\n"
-                        + "Victim ID: " + victimId
-                        + "\nName: " + name + "?",
-                "Confirm Delete",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
+        if (choice != JOptionPane.YES_OPTION) return;
 
         try {
             victimDAO.deleteVictim(victimId);
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Victim deleted successfully!",
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
+            JOptionPane.showMessageDialog(this,
+                    "Victim removed successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
             loadVictims();
-
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "Error deleting victim:\n" + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // =========================================================
-    // ADD VICTIM
-    // =========================================================
+    // ═══════════════════════════════════════════════════════════════════════
+    // ADD DIALOG
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void showAddVictimDialog() {
+        JTextField disasterIdField = dialogField("");
+        JTextField nameField = dialogField("");
+        JTextField ageField = dialogField("");
+        JTextField medicalField = dialogField("None");
 
-        JTextField disasterIdField = styledField("");
-        JTextField nameField = styledField("");
-        JTextField ageField = styledField("");
-        JTextField medicalField = styledField("");
+        JPanel form = new JPanel();
+        form.setOpaque(false);
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+        form.setBorder(new EmptyBorder(24, 28, 8, 28));
 
-        JPanel panel = createFormPanel(4);
+        JLabel title = dialogTitle("Add victim");
+        JLabel subtitle = dialogSubtitle("Register a person who needs evacuation assistance.");
+        form.add(title);
+        form.add(Box.createVerticalStrut(3));
+        form.add(subtitle);
+        form.add(Box.createVerticalStrut(20));
 
-        panel.add(new JLabel("Disaster ID:"));
-        panel.add(disasterIdField);
+        JPanel nameAge = new JPanel(new GridLayout(1, 2, 12, 0));
+        nameAge.setOpaque(false);
+        nameAge.add(labeledField("Name", nameField));
+        nameAge.add(labeledField("Age", ageField));
+        form.add(nameAge);
+        form.add(Box.createVerticalStrut(13));
 
-        panel.add(new JLabel("Name:"));
-        panel.add(nameField);
+        form.add(labeledField("Disaster ID", disasterIdField));
+        form.add(Box.createVerticalStrut(13));
 
-        panel.add(new JLabel("Age:"));
-        panel.add(ageField);
+        form.add(labeledField("Medical condition", medicalField));
+        form.add(Box.createVerticalStrut(8));
+        form.add(quickMedicalPills(medicalField));
+        form.add(Box.createVerticalStrut(14));
 
-        panel.add(new JLabel("Medical Condition:"));
-        panel.add(medicalField);
+        JPanel note = new JPanel(new BorderLayout());
+        note.setOpaque(false);
+        JLabel noteText = new JLabel("New victims start with vulnerability, zone risk and waiting time at 0.");
+        noteText.setFont(SANS_PLAIN12);
+        noteText.setForeground(MUTED);
+        note.add(noteText, BorderLayout.WEST);
+        form.add(note);
 
-        int result = JOptionPane.showConfirmDialog(
-                this,
-                panel,
-                "Add New Victim",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
-        );
+        showVictimDialog("Add victim", form, "Cancel", "Add victim", () -> {
+            try {
+                int disasterId = Integer.parseInt(disasterIdField.getText().trim());
+                String name = nameField.getText().trim();
+                int age = Integer.parseInt(ageField.getText().trim());
+                String medical = medicalField.getText().trim();
 
-        if (result != JOptionPane.OK_OPTION) {
-            return;
-        }
+                if (name.isEmpty()) throw new IllegalArgumentException("Name cannot be empty.");
+                if (age <= 0) throw new IllegalArgumentException("Age must be greater than 0.");
 
-        try {
-            int disasterId =
-                    Integer.parseInt(disasterIdField.getText().trim());
+                Victim v = new Victim();
+                v.setDisasterId(disasterId);
+                v.setName(name);
+                v.setAge(age);
+                v.setMedicalCondition(medical.isEmpty() ? "None" : medical);
+                v.setVulnerabilityScore(0);
+                v.setZoneRisk(0);
+                v.setWaitingTime(0);
+                v.setPriorityScore(0);
+                v.setStatus("WAITING");
 
-            String name = nameField.getText().trim();
+                victimDAO.addVictim(v);
+                loadVictims();
 
-            int age =
-                    Integer.parseInt(ageField.getText().trim());
-
-            String medical =
-                    medicalField.getText().trim();
-
-            if (name.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Name cannot be empty.");
+                JOptionPane.showMessageDialog(this,
+                        "Victim added successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this,
+                        "Disaster ID and Age must be valid numbers.",
+                        "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            } catch (IllegalArgumentException e) {
+                JOptionPane.showMessageDialog(this,
+                        e.getMessage(), "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                        "Error adding victim:\n" + e.getMessage(),
+                        "Database Error", JOptionPane.ERROR_MESSAGE);
             }
-
-            if (age <= 0) {
-                throw new IllegalArgumentException(
-                        "Age must be greater than 0.");
-            }
-
-            Victim victim = new Victim();
-
-            victim.setDisasterId(disasterId);
-            victim.setName(name);
-            victim.setAge(age);
-            victim.setMedicalCondition(medical);
-
-            victim.setVulnerabilityScore(0);
-            victim.setZoneRisk(0);
-            victim.setWaitingTime(0);
-            victim.setPriorityScore(0);
-            victim.setStatus("WAITING");
-
-            victimDAO.addVictim(victim);
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Victim added successfully!",
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-            loadVictims();
-
-        } catch (NumberFormatException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Disaster ID and Age must be valid numbers.",
-                    "Invalid Input",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
-        } catch (IllegalArgumentException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    e.getMessage(),
-                    "Invalid Input",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
-        } catch (Exception e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Error adding victim:\n" + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-        }
+        });
     }
 
-    // =========================================================
-    // UPDATE VICTIM
-    // =========================================================
+    // ═══════════════════════════════════════════════════════════════════════
+    // UPDATE DIALOG
+    // ═══════════════════════════════════════════════════════════════════════
 
     private void showUpdateVictimDialog() {
-
-        int selectedRow = victimTable.getSelectedRow();
-
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(
-                    this,
+        int row = victimTable.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this,
                     "Please select a victim first.",
-                    "No Victim Selected",
-                    JOptionPane.WARNING_MESSAGE
-            );
+                    "No Victim Selected", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        int modelRow =
-                victimTable.convertRowIndexToModel(selectedRow);
-
-        int victimId =
-                Integer.parseInt(tableModel
-                        .getValueAt(modelRow, 0).toString());
+        int modelRow = victimTable.convertRowIndexToModel(row);
+        int victimId = (int) tableModel.getValueAt(modelRow, 0);
 
         int currentDisasterId = 0;
-
         try {
-            for (Victim victim : victimDAO.getAllVictims()) {
-                if (victim.getVictimId() == victimId) {
-                    currentDisasterId = victim.getDisasterId();
+            List<Victim> victims = victimDAO.getAllVictims();
+            for (Victim v : victims) {
+                if (v.getVictimId() == victimId) {
+                    currentDisasterId = v.getDisasterId();
                     break;
                 }
             }
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "Error loading victim details:\n" + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        JTextField disasterIdField =
-                styledField(String.valueOf(currentDisasterId));
+        JTextField nameField = dialogField(String.valueOf(tableModel.getValueAt(modelRow, 1)));
+        JTextField ageField = dialogField(String.valueOf(tableModel.getValueAt(modelRow, 2)));
+        JTextField medicalField = dialogField(String.valueOf(tableModel.getValueAt(modelRow, 3)));
+        JTextField waitingField = dialogField(String.valueOf(tableModel.getValueAt(modelRow, 6)));
 
-        JTextField nameField =
-                styledField(String.valueOf(
-                        tableModel.getValueAt(modelRow, 1)));
+        int currentVulnerability = (int) tableModel.getValueAt(modelRow, 4);
+        int currentZoneRisk = (int) tableModel.getValueAt(modelRow, 5);
+        int currentPriority = (int) tableModel.getValueAt(modelRow, 7);
+        String currentStatus = String.valueOf(tableModel.getValueAt(modelRow, 8));
 
-        JTextField ageField =
-                styledField(String.valueOf(
-                        tableModel.getValueAt(modelRow, 2)));
+        CirclePicker vulnerabilityPicker = new CirclePicker(currentVulnerability, false);
+        CirclePicker zonePicker = new CirclePicker(currentZoneRisk, true);
 
-        JTextField medicalField =
-                styledField(String.valueOf(
-                        tableModel.getValueAt(modelRow, 3)));
+        JPanel form = new JPanel();
+        form.setOpaque(false);
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+        form.setBorder(new EmptyBorder(24, 28, 8, 28));
 
-        JTextField vulnerabilityField =
-                styledField(String.valueOf(
-                        tableModel.getValueAt(modelRow, 4)));
+        JLabel title = dialogTitle("Update victim");
+        JLabel subtitle = dialogSubtitle("Edit the details of victim #" + victimId);
+        form.add(title);
+        form.add(Box.createVerticalStrut(3));
+        form.add(subtitle);
+        form.add(Box.createVerticalStrut(20));
 
-        JTextField zoneRiskField =
-                styledField(String.valueOf(
-                        tableModel.getValueAt(modelRow, 5)));
+        JPanel nameAge = new JPanel(new GridLayout(1, 2, 12, 0));
+        nameAge.setOpaque(false);
+        nameAge.add(labeledField("Name", nameField));
+        nameAge.add(labeledField("Age", ageField));
+        form.add(nameAge);
+        form.add(Box.createVerticalStrut(13));
 
-        JTextField waitingTimeField =
-                styledField(String.valueOf(
-                        tableModel.getValueAt(modelRow, 6)));
+        form.add(labeledField("Medical condition", medicalField));
+        form.add(Box.createVerticalStrut(8));
+        form.add(quickMedicalPills(medicalField));
+        form.add(Box.createVerticalStrut(13));
 
-        JTextField priorityField =
-                styledField(String.valueOf(
-                        tableModel.getValueAt(modelRow, 7)));
+        form.add(labeledComponent("Vulnerability (1 to 10)", vulnerabilityPicker));
+        form.add(Box.createVerticalStrut(10));
 
-        String currentStatus =
-                String.valueOf(tableModel.getValueAt(modelRow, 8));
+        form.add(labeledComponent("Zone risk (1 to 10)", zonePicker));
+        form.add(Box.createVerticalStrut(10));
 
-        String[] statusOptions = {
-                "WAITING",
-                "EVACUATED",
-                "CRITICAL"
-        };
+        JPanel waitingStatus = new JPanel(new GridLayout(1, 2, 12, 0));
+        waitingStatus.setOpaque(false);
+        waitingStatus.add(labeledField("Waiting time", waitingField));
 
-        JComboBox<String> statusBox =
-                new JComboBox<>(statusOptions);
+        StatusPicker statusPicker = new StatusPicker(currentStatus);
+        waitingStatus.add(labeledComponent("Status", statusPicker));
+        form.add(waitingStatus);
+        form.add(Box.createVerticalStrut(13));
 
-        statusBox.setSelectedItem(currentStatus);
-        statusBox.setFont(font(Font.PLAIN, 13));
+        JPanel priorityRow = new JPanel(new BorderLayout());
+        priorityRow.setOpaque(false);
+        JLabel priorityLabel = new JLabel("Calculated priority");
+        priorityLabel.setFont(SANS_BOLD12);
+        priorityLabel.setForeground(MUTED);
 
-        JPanel panel = createFormPanel(9);
+        JLabel priorityPill = new JLabel(priorityText(currentPriority), SwingConstants.CENTER);
+        priorityPill.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        priorityPill.setForeground(currentPriority >= 20 ? RED : currentPriority >= 10 ? AMBER : GREEN);
+        priorityPill.setOpaque(true);
+        priorityPill.setBorder(new EmptyBorder(7, 14, 7, 14));
+        priorityPill.setBackground(currentPriority >= 20 ? RED_SOFT : currentPriority >= 10 ? AMBER_SOFT : GREEN_SOFT);
 
-        panel.add(new JLabel("Disaster ID:"));
-        panel.add(disasterIdField);
+        priorityRow.add(priorityLabel, BorderLayout.WEST);
+        priorityRow.add(priorityPill, BorderLayout.CENTER);
+        form.add(priorityRow);
 
-        panel.add(new JLabel("Name:"));
-        panel.add(nameField);
+        final int savedDisasterId = currentDisasterId;
 
-        panel.add(new JLabel("Age:"));
-        panel.add(ageField);
+        // Keep the existing stored priority exactly as it is; the reference treats it as calculated/read-only.
+        showVictimDialog("Update victim", form, "Cancel", "Save changes", () -> {
+            try {
+                String name = nameField.getText().trim();
+                int age = Integer.parseInt(ageField.getText().trim());
+                int waiting = Integer.parseInt(waitingField.getText().trim());
 
-        panel.add(new JLabel("Medical Condition:"));
-        panel.add(medicalField);
+                if (name.isEmpty()) throw new IllegalArgumentException("Name cannot be empty.");
+                if (age <= 0) throw new IllegalArgumentException("Age must be greater than 0.");
+                if (waiting < 0) throw new IllegalArgumentException("Waiting time cannot be negative.");
 
-        panel.add(new JLabel("Vulnerability:"));
-        panel.add(vulnerabilityField);
+                Victim v = new Victim();
+                v.setVictimId(victimId);
+                v.setDisasterId(savedDisasterId);
+                v.setName(name);
+                v.setAge(age);
+                v.setMedicalCondition(medicalField.getText().trim().isEmpty()
+                        ? "None" : medicalField.getText().trim());
+                v.setVulnerabilityScore(vulnerabilityPicker.getValue());
+                v.setZoneRisk(zonePicker.getValue());
+                v.setWaitingTime(waiting);
+                v.setPriorityScore(currentPriority);
+                v.setStatus(statusPicker.getDatabaseValue());
 
-        panel.add(new JLabel("Zone Risk:"));
-        panel.add(zoneRiskField);
+                victimDAO.updateVictim(v);
+                loadVictims();
 
-        panel.add(new JLabel("Waiting Time:"));
-        panel.add(waitingTimeField);
-
-        panel.add(new JLabel("Priority Score:"));
-        panel.add(priorityField);
-
-        panel.add(new JLabel("Status:"));
-        panel.add(statusBox);
-
-        int result = JOptionPane.showConfirmDialog(
-                this,
-                panel,
-                "Update Victim ID " + victimId,
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
-        );
-
-        if (result != JOptionPane.OK_OPTION) {
-            return;
-        }
-
-        try {
-
-            String name = nameField.getText().trim();
-
-            int age =
-                    Integer.parseInt(ageField.getText().trim());
-
-            if (name.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Name cannot be empty.");
+                JOptionPane.showMessageDialog(this,
+                        "Victim updated successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this,
+                        "Age and Waiting time must be valid numbers.",
+                        "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            } catch (IllegalArgumentException e) {
+                JOptionPane.showMessageDialog(this,
+                        e.getMessage(), "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                        "Error updating victim:\n" + e.getMessage(),
+                        "Database Error", JOptionPane.ERROR_MESSAGE);
             }
-
-            if (age <= 0) {
-                throw new IllegalArgumentException(
-                        "Age must be greater than 0.");
-            }
-
-            Victim victim = new Victim();
-
-            victim.setVictimId(victimId);
-
-            victim.setDisasterId(
-                    Integer.parseInt(
-                            disasterIdField.getText().trim()));
-
-            victim.setName(name);
-            victim.setAge(age);
-
-            victim.setMedicalCondition(
-                    medicalField.getText().trim());
-
-            victim.setVulnerabilityScore(
-                    Integer.parseInt(
-                            vulnerabilityField.getText().trim()));
-
-            victim.setZoneRisk(
-                    Integer.parseInt(
-                            zoneRiskField.getText().trim()));
-
-            victim.setWaitingTime(
-                    Integer.parseInt(
-                            waitingTimeField.getText().trim()));
-
-            victim.setPriorityScore(
-                    Integer.parseInt(
-                            priorityField.getText().trim()));
-
-            victim.setStatus(
-                    String.valueOf(
-                            statusBox.getSelectedItem()));
-
-            victimDAO.updateVictim(victim);
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Victim updated successfully!",
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-            loadVictims();
-
-        } catch (NumberFormatException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "All numeric fields must contain valid numbers.",
-                    "Invalid Input",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
-        } catch (IllegalArgumentException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    e.getMessage(),
-                    "Invalid Input",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
-        } catch (Exception e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Error updating victim:\n" + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-        }
+        });
     }
 
-    // =========================================================
-    // FORM HELPERS
-    // =========================================================
-
-    private JTextField styledField(String value) {
-
-        JTextField field = new JTextField(value);
-
-        field.setFont(font(Font.PLAIN, 13));
-        field.setForeground(TEXT_SUBTLE);
-        field.setBackground(SURFACE);
-        field.setCaretColor(BLUE);
-
-        field.setBorder(new CompoundBorder(
-                new RoundedLineBorder(BORDER_SOFT, 8),
-                new EmptyBorder(7, 10, 7, 10)
-        ));
-
-        return field;
+    private String priorityText(int score) {
+        if (score >= 20) return score + "   CRITICAL";
+        if (score >= 10) return score + "   HIGH";
+        return score + "   LOW";
     }
 
-    private JPanel createFormPanel(int rows) {
+    private JLabel dialogTitle(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        label.setForeground(TEXT);
+        return label;
+    }
 
-        JPanel panel = new JPanel(
-                new GridLayout(rows, 2, 12, 12));
+    private JLabel dialogSubtitle(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(SANS_PLAIN13);
+        label.setForeground(MUTED);
+        return label;
+    }
 
-        panel.setBackground(BACKGROUND);
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
-
+    private JPanel labeledField(String label, JTextField field) {
+        JPanel panel = new JPanel(new BorderLayout(0, 5));
+        panel.setOpaque(false);
+        JLabel l = new JLabel(label);
+        l.setFont(SANS_BOLD12);
+        l.setForeground(MUTED);
+        panel.add(l, BorderLayout.NORTH);
+        panel.add(field, BorderLayout.CENTER);
         return panel;
     }
 
-    // =========================================================
-    // TABLE RENDERERS
-    // =========================================================
+    private JPanel labeledComponent(String label, JComponent component) {
+        JPanel panel = new JPanel(new BorderLayout(0, 5));
+        panel.setOpaque(false);
+        JLabel l = new JLabel(label);
+        l.setFont(SANS_BOLD12);
+        l.setForeground(MUTED);
+        panel.add(l, BorderLayout.NORTH);
+        panel.add(component, BorderLayout.CENTER);
+        return panel;
+    }
 
-    private static class BaseRenderer extends DefaultTableCellRenderer {
+    private JTextField dialogField(String value) {
+        JTextField field = new JTextField(value);
+        field.setFont(SANS_PLAIN13);
+        field.setForeground(TEXT);
+        field.setBackground(PANEL2);
+        field.setCaretColor(BLUE);
+        field.setBorder(new CompoundBorder(
+                new RoundBorder(7, LINE),
+                new EmptyBorder(8, 12, 8, 12)
+        ));
+        field.setPreferredSize(new Dimension(100, 40));
+        return field;
+    }
 
-        BaseRenderer() {
-            setBorder(new EmptyBorder(0, 16, 0, 16));
+    private JPanel quickMedicalPills(JTextField field) {
+        JPanel pills = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        pills.setOpaque(false);
+        String[] values = {"None", "Injury", "Heart Condition", "Fracture", "Cancer"};
+        for (String value : values) {
+            JButton button = new JButton(value);
+            button.setFont(SANS_BOLD12);
+            button.setForeground(MUTED);
+            button.setBackground(PANEL2);
+            button.setFocusPainted(false);
+            button.setBorder(new EmptyBorder(6, 12, 6, 12));
+            button.setContentAreaFilled(true);
+            button.addActionListener(e -> field.setText(value));
+            pills.add(button);
         }
+        return pills;
+    }
 
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean selected,
-                boolean focused,
-                int row,
-                int column) {
+    private void showVictimDialog(String title, JPanel form,
+                                  String cancelText, String saveText,
+                                  Runnable saveAction) {
+        final JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                title,
+                Dialog.ModalityType.APPLICATION_MODAL);
 
-            Component c = super.getTableCellRendererComponent(
-                    table, value, selected, focused, row, column);
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(PANEL);
+        root.setBorder(new LineBorder(LINE, 1, true));
+        root.add(form, BorderLayout.CENTER);
 
-            c.setFont(font(Font.PLAIN, 13));
-            c.setForeground(selected ? TEXT : TEXT_SUBTLE);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttons.setOpaque(false);
+        buttons.setBorder(new EmptyBorder(0, 28, 20, 28));
 
-            if (!selected) {
-                c.setBackground(
-                        row % 2 == 0 ? SURFACE : ROW_ALT);
-            } else {
-                c.setBackground(SELECTION_BG);
+        JButton cancel = dialogButton(cancelText, PANEL2, PANEL3, TEXT, false);
+        JButton save = dialogButton(saveText, BLUE, new Color(0x73, 0xC4, 0xFF),
+                new Color(0x06, 0x22, 0x3A), false);
+
+        buttons.add(cancel);
+        buttons.add(save);
+        root.add(buttons, BorderLayout.SOUTH);
+
+        cancel.addActionListener(e -> dialog.dispose());
+        save.addActionListener(e -> {
+            saveAction.run();
+            dialog.dispose();
+        });
+
+        dialog.setContentPane(root);
+        dialog.setUndecorated(true);
+        dialog.setResizable(false);
+        dialog.setSize(title.startsWith("Update") ? 500 : 500,
+                title.startsWith("Update") ? 610 : 470);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private JButton dialogButton(String text, Color base, Color hover,
+                                 Color fg, boolean outline) {
+        JButton button = new JButton(text) {
+            private boolean hovering;
+            {
+                addMouseListener(new MouseAdapter() {
+                    @Override public void mouseEntered(MouseEvent e) { hovering = true; repaint(); }
+                    @Override public void mouseExited(MouseEvent e) { hovering = false; repaint(); }
+                });
             }
-
-            return c;
-        }
+            @Override protected void paintComponent(Graphics g0) {
+                Graphics2D g = (Graphics2D) g0.create();
+                aa(g);
+                g.setColor(hovering ? hover : base);
+                g.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                if (outline) {
+                    g.setColor(RED);
+                    g.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                }
+                g.dispose();
+                super.paintComponent(g0);
+            }
+        };
+        button.setFont(SANS_BOLD12);
+        button.setForeground(fg);
+        button.setFocusPainted(false);
+        button.setContentAreaFilled(false);
+        button.setOpaque(false);
+        button.setBorder(new EmptyBorder(10, 18, 10, 18));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return button;
     }
 
-    private static class CenterRenderer extends BaseRenderer {
+    private static class CirclePicker extends JPanel {
+        private int value;
+        private final boolean warm;
+        private int hover = -1;
 
-        CenterRenderer() {
-            setHorizontalAlignment(SwingConstants.CENTER);
-        }
-    }
+        CirclePicker(int value, boolean warm) {
+            this.value = Math.max(0, Math.min(10, value));
+            this.warm = warm;
+            setOpaque(false);
+            setPreferredSize(new Dimension(430, 36));
 
-    private static class IdRenderer extends BaseRenderer {
-
-        IdRenderer() {
-            setHorizontalAlignment(SwingConstants.CENTER);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean selected,
-                boolean focused,
-                int row,
-                int column) {
-
-            Component c = super.getTableCellRendererComponent(
-                    table, value, selected, focused, row, column);
-
-            setFont(font(Font.BOLD, 12));
-            setForeground(selected ? TEXT : BLUE);
-
-            return c;
-        }
-    }
-
-    private static class ScoreRenderer extends BaseRenderer {
-
-        private final int highThreshold;
-        private final int mediumThreshold;
-
-        ScoreRenderer(int highThreshold, int mediumThreshold) {
-            this.highThreshold = highThreshold;
-            this.mediumThreshold = mediumThreshold;
-            setHorizontalAlignment(SwingConstants.CENTER);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean selected,
-                boolean focused,
-                int row,
-                int column) {
-
-            Component c = super.getTableCellRendererComponent(
-                    table, value, selected, focused, row, column);
-
-            if (!selected && value != null) {
-                try {
-                    int score = Integer.parseInt(value.toString());
-
-                    if (score >= highThreshold) {
-                        setForeground(RED);
-                    } else if (score >= mediumThreshold) {
-                        setForeground(ORANGE);
-                    } else {
-                        setForeground(GREEN);
+            addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) {
+                    int index = indexAt(e.getX());
+                    if (index >= 1) {
+                        CirclePicker.this.value = index;
+                        repaint();
                     }
-
-                    setFont(font(Font.BOLD, 13));
-
-                } catch (NumberFormatException e) {
-                    setForeground(TEXT_SUBTLE);
                 }
-            }
-
-            return c;
+                @Override public void mouseExited(MouseEvent e) {
+                    hover = -1;
+                    repaint();
+                }
+            });
+            addMouseMotionListener(new MouseMotionAdapter() {
+                @Override public void mouseMoved(MouseEvent e) {
+                    hover = indexAt(e.getX());
+                    repaint();
+                }
+            });
         }
-    }
 
-    private static class PriorityRenderer extends DefaultTableCellRenderer {
+        int getValue() { return value; }
 
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean selected,
-                boolean focused,
-                int row,
-                int column) {
+        private int indexAt(int x) {
+            int start = 16;
+            for (int i = 1; i <= 10; i++) {
+                int cx = start + (i - 1) * 34;
+                if (x >= cx && x <= cx + 30) return i;
+            }
+            return -1;
+        }
 
-            String text = value == null ? "" : value.toString();
+        @Override protected void paintComponent(Graphics g0) {
+            super.paintComponent(g0);
+            Graphics2D g = (Graphics2D) g0.create();
+            aa(g);
 
-            Color bg;
-            Color fg;
-            String label;
+            for (int i = 1; i <= 10; i++) {
+                int x = 16 + (i - 1) * 34;
+                int y = 2;
+                boolean active = i <= value;
+                boolean hot = i == hover;
 
-            try {
-                int score = Integer.parseInt(text);
-
-                if (score >= 20) {
-                    bg = RED_SOFT;
-                    fg = RED_TEXT;
-                    label = score + "  CRITICAL";
-                } else if (score >= 10) {
-                    bg = ORANGE_SOFT;
-                    fg = ORANGE_TEXT;
-                    label = score + "  HIGH";
+                Color fill;
+                Color border;
+                Color textColor;
+                if (active) {
+                    if (warm) {
+                        fill = i >= 9 ? ORANGE : AMBER;
+                        border = fill;
+                    } else {
+                        fill = i >= 8 ? RED : i >= 5 ? AMBER : GREEN;
+                        border = fill;
+                    }
+                    textColor = new Color(0x0B, 0x1A, 0x24);
                 } else {
-                    bg = GREEN_SOFT;
-                    fg = GREEN_TEXT;
-                    label = score + "  LOW";
+                    fill = new Color(255, 255, 255, 0);
+                    border = new Color(0x4D, 0x68, 0x7B);
+                    textColor = MUTED;
                 }
 
-            } catch (NumberFormatException e) {
-                bg = ROW_ALT;
-                fg = TEXT_MUTED;
-                label = text;
+                if (hot && !active) border = BLUE;
+
+                g.setColor(fill);
+                g.fillOval(x, y, 30, 30);
+                g.setColor(border);
+                g.drawOval(x, y, 30, 30);
+
+                g.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                g.setColor(textColor);
+                String s = String.valueOf(i);
+                FontMetrics fm = g.getFontMetrics();
+                g.drawString(s, x + (30 - fm.stringWidth(s)) / 2,
+                        y + (30 - fm.getHeight()) / 2 + fm.getAscent());
             }
-
-            PillCell cell = new PillCell(label, bg, fg);
-
-            cell.setBackground(
-                    selected
-                            ? SELECTION_BG
-                            : (row % 2 == 0 ? SURFACE : ROW_ALT));
-
-            return cell;
+            g.dispose();
         }
     }
 
-    private static class StatusRenderer extends DefaultTableCellRenderer {
+    private static class StatusPicker extends JPanel {
+        private final String[] labels = {"Waiting", "Evacuated", "Critical"};
+        private final String[] values = {"WAITING", "EVACUATED", "CRITICAL"};
+        private int selected;
+        private int hover = -1;
 
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean selected,
-                boolean focused,
-                int row,
-                int column) {
-
-            String status =
-                    value == null
-                            ? ""
-                            : value.toString().toUpperCase();
-
-            Color bg;
-            Color fg;
-
-            if ("CRITICAL".equals(status)) {
-                bg = RED_SOFT;
-                fg = RED_TEXT;
-            } else if ("EVACUATED".equals(status)) {
-                bg = GREEN_SOFT;
-                fg = GREEN_TEXT;
-            } else {
-                bg = ORANGE_SOFT;
-                fg = ORANGE_TEXT;
-            }
-
-            PillCell cell = new PillCell(
-                    value == null ? "" : value.toString(),
-                    bg,
-                    fg
-            );
-
-            cell.setBackground(
-                    selected
-                            ? SELECTION_BG
-                            : (row % 2 == 0 ? SURFACE : ROW_ALT));
-
-            return cell;
-        }
-    }
-
-    // =========================================================
-    // PILL CELL
-    // =========================================================
-
-    private static class PillCell extends JPanel {
-
-        private final String text;
-        private final Color pillBg;
-        private final Color pillFg;
-
-        PillCell(
-                String text,
-                Color pillBg,
-                Color pillFg) {
-
-            this.text = text;
-            this.pillBg = pillBg;
-            this.pillFg = pillFg;
-
-            setOpaque(true);
-            setBorder(new EmptyBorder(0, 12, 0, 12));
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-
-            super.paintComponent(g);
-
-            if (text == null || text.isEmpty()) {
-                return;
-            }
-
-            Graphics2D g2 =
-                    (Graphics2D) g.create();
-
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g2.setFont(font(Font.BOLD, 11));
-
-            FontMetrics fm = g2.getFontMetrics();
-
-            int textWidth = fm.stringWidth(text);
-            int paddingX = 12;
-            int pillWidth = textWidth + paddingX * 2;
-            int pillHeight = 22;
-
-            int x = Math.max(
-                    8,
-                    (getWidth() - pillWidth) / 2);
-
-            int y =
-                    (getHeight() - pillHeight) / 2;
-
-            g2.setColor(pillBg);
-
-            g2.fill(new RoundRectangle2D.Float(
-                    x,
-                    y,
-                    pillWidth,
-                    pillHeight,
-                    pillHeight,
-                    pillHeight
-            ));
-
-            g2.setColor(pillFg);
-
-            int textY =
-                    y
-                            + (pillHeight - fm.getHeight()) / 2
-                            + fm.getAscent();
-
-            g2.drawString(
-                    text,
-                    x + paddingX,
-                    textY
-            );
-
-            g2.dispose();
-        }
-    }
-
-    // =========================================================
-    // ROUNDED CARD
-    // =========================================================
-
-    private static class RoundedCard extends JPanel {
-
-        private final int arc;
-        private final Color fill;
-
-        RoundedCard(int arc, Color fill) {
-            this.arc = arc;
-            this.fill = fill;
+        StatusPicker(String current) {
             setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-
-            Graphics2D g2 =
-                    (Graphics2D) g.create();
-
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-
-            int shadowLayers = 8;
-            int width = getWidth();
-            int height = getHeight();
-
-            for (int i = shadowLayers; i > 0; i--) {
-
-                float alpha =
-                        0.03f
-                                * (shadowLayers - i + 1)
-                                / shadowLayers;
-
-                g2.setColor(
-                        new Color(0f, 0f, 0f, alpha));
-
-                g2.fill(new RoundRectangle2D.Float(
-                        i,
-                        i + 2,
-                        width - i * 2,
-                        height - i * 2 - 2,
-                        arc,
-                        arc
-                ));
+            setPreferredSize(new Dimension(250, 40));
+            selected = 0;
+            for (int i = 0; i < values.length; i++) {
+                if (values[i].equalsIgnoreCase(current)) {
+                    selected = i;
+                    break;
+                }
             }
 
-            g2.setColor(fill);
-
-            g2.fill(new RoundRectangle2D.Float(
-                    4,
-                    4,
-                    width - 8,
-                    height - 10,
-                    arc,
-                    arc
-            ));
-
-            g2.dispose();
-
-            super.paintComponent(g);
-        }
-    }
-
-    // =========================================================
-    // BADGE
-    // =========================================================
-
-    private static class BadgePanel extends JPanel {
-
-        private final Color fill;
-
-        BadgePanel(Color fill) {
-            this.fill = fill;
-            setOpaque(false);
+            addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) {
+                    int i = indexAt(e.getX());
+                    if (i >= 0) {
+                        selected = i;
+                        repaint();
+                    }
+                }
+                @Override public void mouseExited(MouseEvent e) {
+                    hover = -1;
+                    repaint();
+                }
+            });
+            addMouseMotionListener(new MouseMotionAdapter() {
+                @Override public void mouseMoved(MouseEvent e) {
+                    hover = indexAt(e.getX());
+                    repaint();
+                }
+            });
         }
 
-        @Override
-        protected void paintComponent(Graphics g) {
+        String getDatabaseValue() { return values[selected]; }
 
-            Graphics2D g2 =
-                    (Graphics2D) g.create();
-
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g2.setColor(fill);
-
-            g2.fill(new RoundRectangle2D.Float(
-                    0,
-                    0,
-                    getWidth(),
-                    getHeight(),
-                    getHeight(),
-                    getHeight()
-            ));
-
-            g2.dispose();
-
-            super.paintComponent(g);
-        }
-    }
-
-    // =========================================================
-    // PILL BUTTON
-    // =========================================================
-
-    private static class PillButton extends JButton {
-
-        private final Color base;
-        private final Color hover;
-        private final int arc;
-
-        private Color outline;
-        private boolean hovering;
-
-        PillButton(
-                Color base,
-                Color hover,
-                int arc) {
-
-            this.base = base;
-            this.hover = hover;
-            this.arc = arc;
-
-            setContentAreaFilled(false);
-            setFocusPainted(false);
-            setBorderPainted(false);
-            setOpaque(false);
-
-            addMouseListener(
-                    new java.awt.event.MouseAdapter() {
-
-                        @Override
-                        public void mouseEntered(
-                                java.awt.event.MouseEvent e) {
-                            hovering = true;
-                            repaint();
-                        }
-
-                        @Override
-                        public void mouseExited(
-                                java.awt.event.MouseEvent e) {
-                            hovering = false;
-                            repaint();
-                        }
-                    });
+        private int indexAt(int x) {
+            int width = Math.max(1, getWidth() / 3);
+            int i = x / width;
+            return i >= 0 && i < 3 ? i : -1;
         }
 
-        void setOutline(Color outline) {
-            this.outline = outline;
-        }
+        @Override protected void paintComponent(Graphics g0) {
+            super.paintComponent(g0);
+            Graphics2D g = (Graphics2D) g0.create();
+            aa(g);
 
-        @Override
-        protected void paintComponent(Graphics g) {
+            int w = getWidth();
+            int h = 38;
+            g.setColor(PANEL2);
+            g.fillRoundRect(0, 0, w - 1, h, h, h);
+            g.setColor(LINE);
+            g.drawRoundRect(0, 0, w - 1, h, h, h);
 
-            Graphics2D g2 =
-                    (Graphics2D) g.create();
+            int segment = w / 3;
+            int x = selected * segment + 2;
+            g.setColor(hover >= 0 ? new Color(0x1D, 0x4B, 0x6A) : PANEL3);
+            g.fillRoundRect(x, 2, segment - 4, h - 4, h - 4, h - 4);
+            g.setColor(BLUE);
+            g.drawRoundRect(x, 2, segment - 4, h - 4, h - 4, h - 4);
 
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g2.setColor(
-                    hovering ? hover : base);
-
-            g2.fill(new RoundRectangle2D.Float(
-                    0,
-                    0,
-                    getWidth(),
-                    getHeight(),
-                    arc,
-                    arc
-            ));
-
-            if (outline != null) {
-
-                g2.setColor(outline);
-                g2.setStroke(new BasicStroke(1f));
-
-                g2.draw(new RoundRectangle2D.Float(
-                        0.5f,
-                        0.5f,
-                        getWidth() - 1,
-                        getHeight() - 1,
-                        arc,
-                        arc
-                ));
+            g.setFont(SANS_BOLD12);
+            for (int i = 0; i < 3; i++) {
+                FontMetrics fm = g.getFontMetrics();
+                int tx = i * segment + (segment - fm.stringWidth(labels[i])) / 2;
+                g.setColor(i == selected ? TEXT : MUTED);
+                g.drawString(labels[i], tx,
+                        (h - fm.getHeight()) / 2 + fm.getAscent());
             }
-
-            g2.dispose();
-
-            super.paintComponent(g);
+            g.dispose();
         }
     }
 
-    // =========================================================
-    // ROUNDED BORDER
-    // =========================================================
 
-    private static class RoundedLineBorder
-            extends javax.swing.border.AbstractBorder {
-
-        private final Color color;
-        private final int arc;
-
-        RoundedLineBorder(Color color, int arc) {
-            this.color = color;
-            this.arc = arc;
-        }
-
-        @Override
-        public void paintBorder(
-                Component component,
-                Graphics graphics,
-                int x,
-                int y,
-                int width,
-                int height) {
-
-            Graphics2D g2 =
-                    (Graphics2D) graphics.create();
-
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g2.setColor(color);
-
-            g2.draw(new RoundRectangle2D.Float(
-                    x,
-                    y,
-                    width - 1,
-                    height - 1,
-                    arc,
-                    arc
-            ));
-
-            g2.dispose();
-        }
-
-        @Override
-        public Insets getBorderInsets(Component component) {
-            return new Insets(arc / 2, arc / 2,
-                    arc / 2, arc / 2);
-        }
-    }
 }

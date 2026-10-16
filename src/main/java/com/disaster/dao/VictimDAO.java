@@ -11,34 +11,112 @@ import java.util.List;
 
 public class VictimDAO {
 
-    public void addVictim(Victim victim) {
+    public int addVictim(Victim victim) {
 
         String sql = "INSERT INTO victims " +
                 "(disaster_id, name, age, medical_condition, vulnerability_score, " +
                 "zone_risk, waiting_time, priority_score, status) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (
+                Connection connection =
+                        DBConnection.getConnection();
 
-            statement.setInt(1, victim.getDisasterId());
-            statement.setString(2, victim.getName());
-            statement.setInt(3, victim.getAge());
-            statement.setString(4, victim.getMedicalCondition());
-            statement.setInt(5, victim.getVulnerabilityScore());
-            statement.setInt(6, victim.getZoneRisk());
-            statement.setInt(7, victim.getWaitingTime());
-            statement.setInt(8, victim.getPriorityScore());
-            statement.setString(9, victim.getStatus());
+                PreparedStatement statement =
+                        connection.prepareStatement(
+                                sql,
+                                java.sql.Statement.RETURN_GENERATED_KEYS
+                        )
+        ) {
 
-            statement.executeUpdate();
+            statement.setInt(
+                    1,
+                    victim.getDisasterId()
+            );
 
-            System.out.println("Victim added successfully!");
+            statement.setString(
+                    2,
+                    victim.getName()
+            );
+
+            statement.setInt(
+                    3,
+                    victim.getAge()
+            );
+
+            statement.setString(
+                    4,
+                    victim.getMedicalCondition()
+            );
+
+            statement.setInt(
+                    5,
+                    victim.getVulnerabilityScore()
+            );
+
+            statement.setInt(
+                    6,
+                    victim.getZoneRisk()
+            );
+
+            statement.setInt(
+                    7,
+                    victim.getWaitingTime()
+            );
+
+            statement.setInt(
+                    8,
+                    victim.getPriorityScore()
+            );
+
+            statement.setString(
+                    9,
+                    victim.getStatus()
+            );
+
+
+            int rowsInserted =
+                    statement.executeUpdate();
+
+
+            if (rowsInserted > 0) {
+
+                try (
+                        ResultSet generatedKeys =
+                                statement.getGeneratedKeys()
+                ) {
+
+                    if (generatedKeys.next()) {
+
+                        int generatedId =
+                                generatedKeys.getInt(1);
+
+                        victim.setVictimId(
+                                generatedId
+                        );
+
+                        System.out.println(
+                                "Victim added successfully! "
+                                        + "ID: "
+                                        + generatedId
+                        );
+
+                        return generatedId;
+                    }
+                }
+            }
 
         } catch (Exception e) {
-            System.out.println("Error adding victim.");
+
+            System.out.println(
+                    "Error adding victim."
+            );
+
             e.printStackTrace();
         }
+
+
+        return -1;
     }
 
     public List<Victim> getAllVictims() {

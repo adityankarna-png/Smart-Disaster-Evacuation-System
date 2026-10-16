@@ -309,4 +309,81 @@ public class EvacuationServiceImpl implements EvacuationService {
 
         return evacuation;
     }
+
+    // ==========================================
+// EMERGENCY EVACUATION
+// ==========================================
+
+    public Evacuation createEmergencyEvacuation()
+            throws VictimNotFoundException,
+            NoShelterAvailableException,
+            NoResourceAvailableException {
+
+        List<Victim> victims =
+                victimDAO.getAllVictims();
+
+        if (victims == null || victims.isEmpty()) {
+
+            throw new VictimNotFoundException(
+                    "No victims are currently registered."
+            );
+        }
+
+        // ==========================================
+        // FIND HIGHEST PRIORITY VICTIM
+        // ==========================================
+
+        Victim highestPriorityVictim = null;
+
+        int highestPriority = Integer.MIN_VALUE;
+
+        for (Victim victim : victims) {
+
+            int priority =
+                    calculatePriority(victim);
+
+            victim.setPriorityScore(priority);
+
+            if (priority > highestPriority) {
+
+                highestPriority = priority;
+
+                highestPriorityVictim = victim;
+            }
+        }
+
+        // ==========================================
+        // SAFETY CHECK
+        // ==========================================
+
+        if (highestPriorityVictim == null) {
+
+            throw new VictimNotFoundException(
+                    "Unable to determine an emergency evacuation victim."
+            );
+        }
+
+        System.out.println();
+        System.out.println(
+                "===== EMERGENCY EVACUATION TRIGGERED ====="
+        );
+
+        System.out.println(
+                "Selected Victim : "
+                        + highestPriorityVictim.getName()
+        );
+
+        System.out.println(
+                "Priority        : "
+                        + highestPriority
+        );
+
+        // ==========================================
+        // CREATE NORMAL EVACUATION
+        // ==========================================
+
+        return createEvacuation(
+                highestPriorityVictim.getVictimId()
+        );
+    }
 }

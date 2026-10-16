@@ -235,4 +235,87 @@ public class ReportDAO {
                         "FROM resources"
         );
     }
+
+    // ==========================================
+// LATEST EVACUATION RESPONSE
+// ==========================================
+
+    public String getLatestEvacuationResponse() {
+
+        String sql =
+                "SELECT " +
+                        "e.evacuation_id, " +
+                        "e.victim_id, " +
+                        "e.shelter_id, " +
+                        "e.resource_id, " +
+                        "e.priority_score, " +
+                        "e.status, " +
+                        "v.name AS victim_name, " +
+                        "s.name AS shelter_name, " +
+                        "r.name AS resource_name " +
+                        "FROM evacuations e " +
+
+                        "LEFT JOIN victims v " +
+                        "ON e.victim_id = v.victim_id " +
+
+                        "LEFT JOIN shelters s " +
+                        "ON e.shelter_id = s.shelter_id " +
+
+                        "LEFT JOIN resources r " +
+                        "ON e.resource_id = r.resource_id " +
+
+                        "ORDER BY e.evacuation_id DESC " +
+                        "LIMIT 1";
+
+        try (
+                Connection connection =
+                        DBConnection.getConnection();
+
+                PreparedStatement statement =
+                        connection.prepareStatement(sql);
+
+                ResultSet resultSet =
+                        statement.executeQuery()
+        ) {
+
+            if (resultSet.next()) {
+
+                return
+                        "Evacuation ID: "
+                                + resultSet.getInt(
+                                "evacuation_id"
+                        )
+                                + "\nVictim: "
+                                + resultSet.getString(
+                                "victim_name"
+                        )
+                                + "\nPriority: "
+                                + resultSet.getInt(
+                                "priority_score"
+                        )
+                                + "\nShelter: "
+                                + resultSet.getString(
+                                "shelter_name"
+                        )
+                                + "\nResource: "
+                                + resultSet.getString(
+                                "resource_name"
+                        )
+                                + "\nStatus: "
+                                + resultSet.getString(
+                                "status"
+                        );
+            }
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Error getting latest evacuation response."
+            );
+
+            e.printStackTrace();
+        }
+
+        return "No evacuation response available.";
+    }
 }

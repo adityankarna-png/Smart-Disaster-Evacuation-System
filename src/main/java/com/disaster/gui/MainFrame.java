@@ -1,5 +1,10 @@
 package com.disaster.gui;
 
+import com.disaster.dao.DisasterDAO;
+import com.disaster.dao.ResourceDAO;
+import com.disaster.dao.ShelterDAO;
+import com.disaster.dao.VictimDAO;
+import com.disaster.earthquake.EarthquakeData;
 import com.disaster.model.User;
 import com.disaster.service.SystemMonitor;
 
@@ -10,6 +15,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainFrame extends JFrame {
 
@@ -18,74 +27,104 @@ public class MainFrame extends JFrame {
     // ==========================================
 
     private JPanel contentPanel;
-    private JPanel navigationPanel;
 
-    private JLabel pageTitleLabel;
-    private JLabel pageSubtitleLabel;
-
-    private JLabel userNameLabel;
-    private JLabel userRoleLabel;
-
-    private JButton dashboardButton;
-    private JButton disasterButton;
-    private JButton victimButton;
-    private JButton shelterButton;
-    private JButton resourceButton;
-    private JButton evacuationButton;
-    private JButton reportsButton;
-    private JButton logoutButton;
+    private NavButton dashboardButton;
+    private NavButton disasterButton;
+    private NavButton victimButton;
+    private NavButton shelterButton;
+    private NavButton resourceButton;
+    private NavButton evacuationButton;
+    private NavButton reportsButton;
 
     // ==========================================
-    // CURRENT USER
+    // STATE & SERVICES
     // ==========================================
 
     private final User currentUser;
     private final SystemMonitor systemMonitor;
 
+    private final DisasterDAO disasterDAO;
+    private final VictimDAO victimDAO;
+    private final ShelterDAO shelterDAO;
+    private final ResourceDAO resourceDAO;
+
+    private DashboardPanel dashboardPanel;
+
+    private UserDashboardPanel userDashboardPanel;
+
+    private final List<EarthquakeData> recentEarthquakeAlerts =
+            new ArrayList<>();
+
+    private Timer sidebarCountTimer;
+
     // ==========================================
-    // COLORS
+    // PALETTE
     // ==========================================
 
-    private static final Color HEADER_COLOR =
-            new Color(25, 55, 90);
+    private static final Color BG_SIDEBAR =
+            new Color(0x0A1118);
 
-    private static final Color HEADER_DARK =
-            new Color(20, 45, 75);
+    private static final Color BG_CONTENT =
+            new Color(0x0C1822);
 
-    private static final Color SIDEBAR_COLOR =
-            new Color(35, 50, 65);
+    private static final Color NAV_ACTIVE =
+            new Color(0x183046);
 
-    private static final Color BUTTON_COLOR =
-            new Color(42, 62, 82);
+    private static final Color NAV_HOVER =
+            new Color(0x122435);
 
-    private static final Color BUTTON_HOVER =
-            new Color(55, 85, 110);
+    private static final Color TEXT_MAIN =
+            new Color(0xE8F0F5);
 
-    private static final Color BUTTON_ACTIVE =
-            new Color(55, 105, 155);
+    private static final Color TEXT_MUTED =
+            new Color(0x8BA5B8);
 
-    private static final Color BACKGROUND =
-            new Color(245, 247, 250);
+    private static final Color BRAND_ORANGE =
+            new Color(0xF26D4B);
 
-    private static final Color TEXT =
-            new Color(35, 45, 55);
+    private static final Color BADGE_RED =
+            new Color(0xFF5A5F);
 
-    private static final Color SUBTEXT =
-            new Color(105, 115, 125);
+    private static final Color BADGE_DARK =
+            new Color(0x1A2835);
 
-    private static final Color BORDER =
-            new Color(220, 225, 230);
+    private static Font font(
+            int style,
+            float size
+    ) {
 
-    private static final Color SUCCESS =
-            new Color(40, 150, 90);
+        return new Font(
+                "Segoe UI",
+                Font.PLAIN,
+                12
+        ).deriveFont(
+                style,
+                size
+        );
+    }
 
-    private static final Color DANGER =
-            new Color(205, 65, 65);
+    private static void aa(Graphics2D g) {
 
+        g.setRenderingHint(
+                RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON
+        );
+
+        g.setRenderingHint(
+                RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON
+        );
+
+        g.setRenderingHint(
+                RenderingHints.KEY_STROKE_CONTROL,
+                RenderingHints.VALUE_STROKE_PURE
+        );
+    }
 
     // ==========================================
     // CONSTRUCTOR
     // ==========================================
+
     public MainFrame(User user) {
 
         this.currentUser = user;
@@ -93,14 +132,36 @@ public class MainFrame extends JFrame {
         this.systemMonitor =
                 new SystemMonitor();
 
+        this.disasterDAO =
+                new DisasterDAO();
+
+        this.victimDAO =
+                new VictimDAO();
+
+        this.shelterDAO =
+                new ShelterDAO();
+
+        this.resourceDAO =
+                new ResourceDAO();
+
+        systemMonitor.setEarthquakeAlertListener(
+                this::showEarthquakeAlert
+        );
+
         setTitle(
                 "Smart Disaster Evacuation System"
         );
 
-        setSize(1250, 750);
+        setSize(
+                1440,
+                900
+        );
 
         setMinimumSize(
-                new Dimension(1100, 650)
+                new Dimension(
+                        1024,
+                        720
+                )
         );
 
         setDefaultCloseOperation(
@@ -113,12 +174,6 @@ public class MainFrame extends JFrame {
                 new BorderLayout()
         );
 
-        getContentPane().setBackground(
-                BACKGROUND
-        );
-
-        buildHeader();
-
         buildSidebar();
 
         buildContent();
@@ -129,6 +184,42 @@ public class MainFrame extends JFrame {
 
         systemMonitor.startAll();
 
+        updateSidebarCounts();
+        startSidebarCountRefresh();
+
+        SwingUtilities.invokeLater(() -> {
+
+            systemMonitor.setEvacuationListener(
+                    evacuation -> {
+
+                        SwingUtilities.invokeLater(() -> {
+
+                            if (dashboardPanel != null) {
+
+                                dashboardPanel
+                                        .updateEvacuationStatus(
+                                                evacuation
+                                        );
+                            }
+                        });
+                    }
+            );
+
+            if (dashboardPanel != null) {
+
+                EarthquakeData latestEarthquake =
+                        systemMonitor.getLatestEarthquake();
+
+                if (latestEarthquake != null) {
+
+                    dashboardPanel
+                            .updateLatestEarthquake(
+                                    latestEarthquake
+                            );
+                }
+            }
+        });
+
         addWindowListener(
                 new WindowAdapter() {
 
@@ -136,6 +227,12 @@ public class MainFrame extends JFrame {
                     public void windowClosing(
                             WindowEvent e
                     ) {
+
+                        stopSidebarCountRefresh();
+
+                        if (userDashboardPanel != null) {
+                            userDashboardPanel.stopRefresh();
+                        }
 
                         systemMonitor.stopAll();
 
@@ -145,499 +242,673 @@ public class MainFrame extends JFrame {
         );
     }
 
-
     // ==========================================
-    // HEADER
-    // ==========================================
-
-    private void buildHeader() {
-
-        JPanel headerPanel =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-        headerPanel.setBackground(
-                HEADER_COLOR
-        );
-
-        headerPanel.setPreferredSize(
-                new Dimension(1250, 92)
-        );
-
-        headerPanel.setBorder(
-                new EmptyBorder(
-                        12,
-                        28,
-                        12,
-                        28
-                )
-        );
-
-
-        // ==========================================
-        // BRAND
-        // ==========================================
-
-        JPanel brandPanel =
-                new JPanel();
-
-        brandPanel.setOpaque(false);
-
-        brandPanel.setLayout(
-                new BoxLayout(
-                        brandPanel,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-
-        JLabel titleLabel =
-                new JLabel(
-                        "SMART DISASTER EVACUATION SYSTEM"
-                );
-
-        titleLabel.setForeground(
-                Color.WHITE
-        );
-
-        titleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        25
-                )
-        );
-
-
-        JLabel subtitleLabel =
-                new JLabel(
-                        "Emergency response and evacuation management"
-                );
-
-        subtitleLabel.setForeground(
-                new Color(
-                        205,
-                        220,
-                        235
-                )
-        );
-
-        subtitleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        13
-                )
-        );
-
-
-        brandPanel.add(titleLabel);
-
-        brandPanel.add(
-                Box.createVerticalStrut(5)
-        );
-
-        brandPanel.add(subtitleLabel);
-
-
-        headerPanel.add(
-                brandPanel,
-                BorderLayout.WEST
-        );
-
-
-        // ==========================================
-        // USER INFORMATION
-        // ==========================================
-
-        JPanel userPanel =
-                new JPanel();
-
-        userPanel.setOpaque(false);
-
-        userPanel.setLayout(
-                new BoxLayout(
-                        userPanel,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-
-        userNameLabel =
-                new JLabel(
-                        "Welcome"
-                );
-
-        userNameLabel.setForeground(
-                Color.WHITE
-        );
-
-        userNameLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        13
-                )
-        );
-
-        userNameLabel.setAlignmentX(
-                Component.RIGHT_ALIGNMENT
-        );
-
-
-        userRoleLabel =
-                new JLabel(
-                        "Role"
-                );
-
-        userRoleLabel.setForeground(
-                new Color(
-                        180,
-                        205,
-                        225
-                )
-        );
-
-        userRoleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        11
-                )
-        );
-
-        userRoleLabel.setAlignmentX(
-                Component.RIGHT_ALIGNMENT
-        );
-
-
-        userPanel.add(
-                userNameLabel
-        );
-
-        userPanel.add(
-                Box.createVerticalStrut(4)
-        );
-
-        userPanel.add(
-                userRoleLabel
-        );
-
-
-        if (currentUser != null) {
-
-            userNameLabel.setText(
-                    "Welcome, " +
-                            currentUser.getName()
-            );
-
-            userRoleLabel.setText(
-                    "ROLE: " +
-                            currentUser.getRole()
-            );
-        }
-
-
-        headerPanel.add(
-                userPanel,
-                BorderLayout.EAST
-        );
-
-
-        add(
-                headerPanel,
-                BorderLayout.NORTH
-        );
-    }
-
-
-    // ==========================================
-    // SIDEBAR
+    // SIDEBAR BUILDER
     // ==========================================
 
     private void buildSidebar() {
 
-        JPanel sidebarPanel =
+        JPanel sidebar =
                 new JPanel(
                         new BorderLayout()
                 );
 
-        sidebarPanel.setBackground(
-                SIDEBAR_COLOR
+        sidebar.setBackground(
+                BG_SIDEBAR
         );
 
-        sidebarPanel.setPreferredSize(
-                new Dimension(225, 650)
+        sidebar.setPreferredSize(
+                new Dimension(
+                        240,
+                        0
+                )
         );
 
+        sidebar.setBorder(
+                new EmptyBorder(
+                        24,
+                        16,
+                        24,
+                        16
+                )
+        );
 
-        // ==========================================
-        // SIDEBAR TOP
-        // ==========================================
+        // ======================================
+        // BRANDING
+        // ======================================
 
-        JPanel sideTop =
+        JPanel brand =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.LEFT,
+                                12,
+                                0
+                        )
+                );
+
+        brand.setOpaque(false);
+
+        JComponent logo =
+                new JComponent() {
+
+                    @Override
+                    protected void paintComponent(
+                            Graphics g0
+                    ) {
+
+                        Graphics2D g =
+                                (Graphics2D) g0.create();
+
+                        aa(g);
+
+                        g.setColor(
+                                BRAND_ORANGE
+                        );
+
+                        g.fillRoundRect(
+                                0,
+                                0,
+                                32,
+                                32,
+                                10,
+                                10
+                        );
+
+                        g.setColor(
+                                Color.WHITE
+                        );
+
+                        g.setStroke(
+                                new BasicStroke(
+                                        1.8f,
+                                        BasicStroke.CAP_ROUND,
+                                        BasicStroke.JOIN_ROUND
+                                )
+                        );
+
+                        Path2D.Float p =
+                                new Path2D.Float();
+
+                        p.moveTo(
+                                6,
+                                16
+                        );
+
+                        p.lineTo(
+                                10,
+                                16
+                        );
+
+                        p.lineTo(
+                                14,
+                                8
+                        );
+
+                        p.lineTo(
+                                18,
+                                24
+                        );
+
+                        p.lineTo(
+                                22,
+                                16
+                        );
+
+                        p.lineTo(
+                                26,
+                                16
+                        );
+
+                        g.draw(p);
+
+                        g.dispose();
+                    }
+                };
+
+        logo.setPreferredSize(
+                new Dimension(
+                        32,
+                        32
+                )
+        );
+
+        JPanel brandText =
                 new JPanel();
 
-        sideTop.setBackground(
-                HEADER_DARK
-        );
-
-        sideTop.setLayout(
+        brandText.setLayout(
                 new BoxLayout(
-                        sideTop,
+                        brandText,
                         BoxLayout.Y_AXIS
                 )
         );
 
-        sideTop.setBorder(
-                new EmptyBorder(
-                        20,
-                        22,
-                        18,
-                        22
-                )
-        );
+        brandText.setOpaque(false);
 
-
-        JLabel menuLabel =
+        JLabel l1 =
                 new JLabel(
-                        "CONTROL CENTER"
+                        "Smart Disaster"
                 );
 
-        menuLabel.setForeground(
-                new Color(
-                        180,
-                        200,
-                        220
+        l1.setFont(
+                font(
+                        Font.BOLD,
+                        13
                 )
         );
 
-        menuLabel.setFont(
-                new Font(
-                        "Arial",
+        l1.setForeground(
+                TEXT_MAIN
+        );
+
+        JLabel l2 =
+                new JLabel(
+                        "Evacuation System"
+                );
+
+        l2.setFont(
+                font(
                         Font.BOLD,
+                        13
+                )
+        );
+
+        l2.setForeground(
+                TEXT_MAIN
+        );
+
+        JLabel l3 =
+                new JLabel(
+                        "Control centre"
+                );
+
+        l3.setFont(
+                font(
+                        Font.PLAIN,
                         11
                 )
         );
 
-
-        JLabel menuDescription =
-                new JLabel(
-                        "Manage response operations"
-                );
-
-        menuDescription.setForeground(
-                new Color(
-                        230,
-                        235,
-                        240
-                )
+        l3.setForeground(
+                TEXT_MUTED
         );
 
-        menuDescription.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        12
-                )
-        );
+        brandText.add(l1);
+        brandText.add(l2);
+        brandText.add(l3);
 
+        brand.add(logo);
+        brand.add(brandText);
 
-        sideTop.add(menuLabel);
-
-        sideTop.add(
-                Box.createVerticalStrut(6)
-        );
-
-        sideTop.add(menuDescription);
-
-
-        sidebarPanel.add(
-                sideTop,
+        sidebar.add(
+                brand,
                 BorderLayout.NORTH
         );
 
-
-        // ==========================================
+        // ======================================
         // NAVIGATION
-        // ==========================================
+        // ======================================
 
-        navigationPanel =
-                new JPanel(
-                        new GridLayout(
-                                0,
-                                1,
-                                0,
-                                5
-                        )
-                );
+        JPanel nav =
+                new JPanel();
 
-        navigationPanel.setBackground(
-                SIDEBAR_COLOR
-        );
-
-        navigationPanel.setBorder(
-                new EmptyBorder(
-                        10,
-                        8,
-                        10,
-                        8
+        nav.setLayout(
+                new BoxLayout(
+                        nav,
+                        BoxLayout.Y_AXIS
                 )
         );
 
+        nav.setOpaque(false);
 
+        nav.setBorder(
+                new EmptyBorder(
+                        40,
+                        0,
+                        0,
+                        0
+                )
+        );
 
         dashboardButton =
-                createMenuButton(
-                        "Dashboard"
+                new NavButton(
+                        "Dashboard",
+                        0,
+                        null,
+                        null
                 );
 
         disasterButton =
-                createMenuButton(
-                        "Disasters"
+                new NavButton(
+                        "Disasters",
+                        1,
+                        "0",
+                        BADGE_RED
                 );
 
+        /*
+         * No hardcoded victim count anymore.
+         */
         victimButton =
-                createMenuButton(
-                        "Victims"
+                new NavButton(
+                        "Victims",
+                        2,
+                        "0",
+                        BADGE_DARK
                 );
 
         shelterButton =
-                createMenuButton(
-                        "Shelters"
+                new NavButton(
+                        "Shelters",
+                        3,
+                        "0",
+                        BADGE_DARK
                 );
 
         resourceButton =
-                createMenuButton(
-                        "Resources"
+                new NavButton(
+                        "Resources",
+                        4,
+                        "0",
+                        BADGE_DARK
                 );
 
         evacuationButton =
-                createMenuButton(
-                        "Evacuation"
+                new NavButton(
+                        "Evacuation",
+                        5,
+                        null,
+                        null
                 );
 
         reportsButton =
-                createMenuButton(
-                        "Reports"
+                new NavButton(
+                        "Reports",
+                        6,
+                        null,
+                        null
                 );
 
-        logoutButton =
-                createMenuButton(
-                        "Logout"
-                );
-
-
-        navigationPanel.add(
+        nav.add(
                 dashboardButton
         );
 
-        navigationPanel.add(
+        nav.add(
+                Box.createVerticalStrut(4)
+        );
+
+        nav.add(
                 disasterButton
         );
 
-        navigationPanel.add(
+        nav.add(
+                Box.createVerticalStrut(4)
+        );
+
+        nav.add(
                 victimButton
         );
 
-        navigationPanel.add(
+        nav.add(
+                Box.createVerticalStrut(4)
+        );
+
+        nav.add(
                 shelterButton
         );
 
-        navigationPanel.add(
+        nav.add(
+                Box.createVerticalStrut(4)
+        );
+
+        nav.add(
                 resourceButton
         );
 
-        navigationPanel.add(
+        nav.add(
+                Box.createVerticalStrut(4)
+        );
+
+        nav.add(
                 evacuationButton
         );
 
-        navigationPanel.add(
+        nav.add(
+                Box.createVerticalStrut(4)
+        );
+
+        nav.add(
                 reportsButton
         );
 
-        navigationPanel.add(
-                logoutButton
-        );
-
-
-        sidebarPanel.add(
-                navigationPanel,
+        sidebar.add(
+                nav,
                 BorderLayout.CENTER
         );
 
-
-        // ==========================================
-        // SIDEBAR FOOTER
-        // ==========================================
+        // ======================================
+        // USER PROFILE FOOTER
+        // ======================================
 
         JPanel footer =
                 new JPanel(
                         new BorderLayout()
                 );
 
-        footer.setBackground(
-                new Color(
-                        30,
-                        43,
-                        55
-                )
-        );
+        footer.setOpaque(false);
 
-        footer.setBorder(
-                new EmptyBorder(
-                        10,
-                        16,
-                        10,
-                        16
-                )
-        );
-
-
-        JLabel footerText =
-                new JLabel(
-                        "DISASTER RESPONSE SYSTEM"
+        JPanel userInfo =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.LEFT,
+                                10,
+                                0
+                        )
                 );
 
-        footerText.setForeground(
-                new Color(
-                        150,
-                        170,
-                        190
+        userInfo.setOpaque(false);
+
+        String initials;
+
+        if (
+                currentUser != null
+                        &&
+                        currentUser.getName() != null
+                        &&
+                        currentUser.getName().length() > 0
+        ) {
+
+            initials =
+                    currentUser
+                            .getName()
+                            .substring(
+                                    0,
+                                    1
+                            )
+                            .toUpperCase();
+
+        } else {
+
+            initials = "SA";
+        }
+
+        if (
+                currentUser != null
+                        &&
+                        currentUser.getName() != null
+                        &&
+                        currentUser.getName().contains(" ")
+        ) {
+
+            String[] parts =
+                    currentUser
+                            .getName()
+                            .split(" ");
+
+            if (
+                    parts.length >= 2
+                            &&
+                            !parts[0].isEmpty()
+                            &&
+                            !parts[1].isEmpty()
+            ) {
+
+                initials =
+                        parts[0]
+                                .substring(0, 1)
+                                .toUpperCase()
+                                +
+                                parts[1]
+                                        .substring(0, 1)
+                                        .toUpperCase();
+            }
+        }
+
+        final String avatarText =
+                initials;
+
+        JComponent avatar =
+                new JComponent() {
+
+                    @Override
+                    protected void paintComponent(
+                            Graphics g0
+                    ) {
+
+                        Graphics2D g =
+                                (Graphics2D) g0.create();
+
+                        aa(g);
+
+                        g.setColor(
+                                NAV_ACTIVE
+                        );
+
+                        g.fill(
+                                new Ellipse2D.Float(
+                                        0,
+                                        0,
+                                        36,
+                                        36
+                                )
+                        );
+
+                        g.setColor(
+                                TEXT_MAIN
+                        );
+
+                        g.setFont(
+                                font(
+                                        Font.BOLD,
+                                        13
+                                )
+                        );
+
+                        FontMetrics fm =
+                                g.getFontMetrics();
+
+                        g.drawString(
+                                avatarText,
+                                (
+                                        36
+                                                -
+                                                fm.stringWidth(
+                                                        avatarText
+                                                )
+                                ) / 2,
+                                (
+                                        36
+                                                +
+                                                fm.getAscent()
+                                                -
+                                                fm.getDescent()
+                                ) / 2
+                        );
+
+                        g.dispose();
+                    }
+                };
+
+        avatar.setPreferredSize(
+                new Dimension(
+                        36,
+                        36
                 )
         );
 
-        footerText.setFont(
-                new Font(
-                        "Arial",
+        JPanel userText =
+                new JPanel();
+
+        userText.setLayout(
+                new BoxLayout(
+                        userText,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        userText.setOpaque(false);
+
+        JLabel uName =
+                new JLabel(
+                        currentUser != null
+                                ? currentUser.getName()
+                                : "System Administrator"
+                );
+
+        uName.setFont(
+                font(
                         Font.BOLD,
-                        9
+                        12
                 )
         );
 
+        uName.setForeground(
+                TEXT_MAIN
+        );
+
+        JLabel uRole =
+                new JLabel(
+                        "Role: "
+                                +
+                                (
+                                        currentUser != null
+                                                ? currentUser.getRole()
+                                                : "Admin"
+                                )
+                );
+
+        uRole.setFont(
+                font(
+                        Font.PLAIN,
+                        11
+                )
+        );
+
+        uRole.setForeground(
+                TEXT_MUTED
+        );
+
+        userText.add(uName);
+        userText.add(uRole);
+
+        userInfo.add(avatar);
+        userInfo.add(userText);
 
         footer.add(
-                footerText,
+                userInfo,
                 BorderLayout.CENTER
         );
 
+        JButton logoutBtn =
+                new JButton(
+                        "Log out"
+                ) {
 
-        sidebarPanel.add(
+                    @Override
+                    protected void paintComponent(
+                            Graphics g0
+                    ) {
+
+                        Graphics2D g =
+                                (Graphics2D) g0.create();
+
+                        aa(g);
+
+                        g.setColor(
+                                new Color(
+                                        0x111A24
+                                )
+                        );
+
+                        g.fillRoundRect(
+                                0,
+                                0,
+                                getWidth(),
+                                getHeight(),
+                                10,
+                                10
+                        );
+
+                        g.dispose();
+
+                        super.paintComponent(
+                                g0
+                        );
+                    }
+                };
+
+        logoutBtn.setFont(
+                font(
+                        Font.PLAIN,
+                        11
+                )
+        );
+
+        logoutBtn.setForeground(
+                TEXT_MUTED
+        );
+
+        logoutBtn.setContentAreaFilled(
+                false
+        );
+
+        logoutBtn.setBorderPainted(
+                false
+        );
+
+        logoutBtn.setFocusPainted(
+                false
+        );
+
+        logoutBtn.setCursor(
+                Cursor.getPredefinedCursor(
+                        Cursor.HAND_CURSOR
+                )
+        );
+
+        logoutBtn.setPreferredSize(
+                new Dimension(
+                        70,
+                        26
+                )
+        );
+
+        logoutBtn.addActionListener(
+                e -> confirmLogout()
+        );
+
+        JPanel logoutWrap =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.LEFT,
+                                46,
+                                12
+                        )
+                );
+
+        logoutWrap.setOpaque(false);
+
+        logoutWrap.add(
+                logoutBtn
+        );
+
+        footer.add(
+                logoutWrap,
+                BorderLayout.SOUTH
+        );
+
+        sidebar.add(
                 footer,
                 BorderLayout.SOUTH
         );
 
-
         add(
-                sidebarPanel,
+                sidebar,
                 BorderLayout.WEST
         );
 
-
-        // ==========================================
-        // ACTIONS
-        // ==========================================
+        // ======================================
+        // NAVIGATION ACTIONS
+        // ======================================
 
         dashboardButton.addActionListener(
                 e -> showDashboard()
@@ -666,266 +937,109 @@ public class MainFrame extends JFrame {
         reportsButton.addActionListener(
                 e -> showReports()
         );
-
-        logoutButton.addActionListener(
-                e -> confirmLogout()
-        );
     }
 
-
     // ==========================================
-    // ROLE PERMISSIONS
+    // SIDEBAR DATABASE COUNTS
     // ==========================================
 
-    private void applyRolePermissions() {
+    private void updateSidebarCounts() {
 
-        if (currentUser == null) {
+        if (
+                disasterButton == null
+                        ||
+                        victimButton == null
+                        ||
+                        shelterButton == null
+                        ||
+                        resourceButton == null
+        ) {
             return;
         }
 
-        String role = currentUser.getRole();
+        try {
 
-        if (role == null) {
-            return;
-        }
+            int disasterCount =
+                    disasterDAO
+                            .getAllDisasters()
+                            .size();
 
-        role = role.trim().toUpperCase();
+            int victimCount =
+                    victimDAO
+                            .getAllVictims()
+                            .size();
 
-        // ==========================================
-        // ADMIN
-        // ==========================================
+            int shelterCount =
+                    shelterDAO
+                            .getAllShelters()
+                            .size();
 
-        if (role.equals("ADMIN")) {
+            int resourceCount =
+                    resourceDAO
+                            .getAllResources()
+                            .size();
 
-            enableAllModules();
-
-            return;
-        }
-
-        // ==========================================
-        // RESCUE TEAM
-        // ==========================================
-
-        if (role.equals("RESCUE_TEAM")) {
-
-            enableAllModules();
-
-            return;
-        }
-
-        // ==========================================
-        // MEDICAL TEAM
-        // ==========================================
-
-        if (role.equals("MEDICAL_TEAM")) {
-
-            navigationPanel.remove(
-                    disasterButton
+            disasterButton.setBadgeText(
+                    String.valueOf(disasterCount)
             );
 
-            navigationPanel.remove(
-                    shelterButton
+            victimButton.setBadgeText(
+                    String.valueOf(victimCount)
             );
 
-            navigationPanel.remove(
-                    resourceButton
+            shelterButton.setBadgeText(
+                    String.valueOf(shelterCount)
             );
 
-            navigationPanel.remove(
-                    reportsButton
+            resourceButton.setBadgeText(
+                    String.valueOf(resourceCount)
             );
 
-            dashboardButton.setEnabled(true);
+            disasterButton.repaint();
+            victimButton.repaint();
+            shelterButton.repaint();
+            resourceButton.repaint();
 
-            victimButton.setEnabled(true);
+        } catch (Exception e) {
 
-            evacuationButton.setEnabled(true);
-
-            logoutButton.setEnabled(true);
-
-            navigationPanel.revalidate();
-            navigationPanel.repaint();
-
-            return;
+            System.err.println(
+                    "[MainFrame] Unable to update sidebar counts: "
+                            + e.getMessage()
+            );
         }
-
-        // ==========================================
-        // UNKNOWN ROLE
-        // ==========================================
-
-        navigationPanel.remove(
-                disasterButton
-        );
-
-        navigationPanel.remove(
-                victimButton
-        );
-
-        navigationPanel.remove(
-                shelterButton
-        );
-
-        navigationPanel.remove(
-                resourceButton
-        );
-
-        navigationPanel.remove(
-                evacuationButton
-        );
-
-        dashboardButton.setEnabled(true);
-        logoutButton.setEnabled(true);
-
-        navigationPanel.revalidate();
-        navigationPanel.repaint();
     }
 
+    private void startSidebarCountRefresh() {
 
-    // ==========================================
-    // ENABLE ALL
-    // ==========================================
+        if (sidebarCountTimer != null) {
+            sidebarCountTimer.stop();
+        }
 
-    private void enableAllModules() {
+        sidebarCountTimer =
+                new Timer(
+                        2000,
+                        e -> updateSidebarCounts()
+                );
 
-        dashboardButton.setEnabled(true);
-
-        disasterButton.setEnabled(true);
-
-        victimButton.setEnabled(true);
-
-        shelterButton.setEnabled(true);
-
-        resourceButton.setEnabled(true);
-
-        evacuationButton.setEnabled(true);
-
-        reportsButton.setEnabled(true);
-
-        logoutButton.setEnabled(true);
+        sidebarCountTimer.setRepeats(true);
+        sidebarCountTimer.start();
     }
 
+    private void stopSidebarCountRefresh() {
+
+        if (sidebarCountTimer != null) {
+
+            sidebarCountTimer.stop();
+
+            sidebarCountTimer = null;
+        }
+    }
 
     // ==========================================
-    // CONTENT
+    // CONTENT WRAPPER
     // ==========================================
 
     private void buildContent() {
-
-        JPanel wrapper =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-        wrapper.setBackground(
-                BACKGROUND
-        );
-
-
-        // ==========================================
-        // PAGE HEADER
-        // ==========================================
-
-        JPanel pageHeader =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-        pageHeader.setBackground(
-                Color.WHITE
-        );
-
-        pageHeader.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(
-                                0,
-                                0,
-                                1,
-                                0,
-                                BORDER
-                        ),
-                        new EmptyBorder(
-                                12,
-                                24,
-                                12,
-                                24
-                        )
-                )
-        );
-
-
-        pageTitleLabel =
-                new JLabel(
-                        "Dashboard"
-                );
-
-        pageTitleLabel.setForeground(
-                TEXT
-        );
-
-        pageTitleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        15
-                )
-        );
-
-
-        pageSubtitleLabel =
-                new JLabel(
-                        "Overview of emergency response operations"
-                );
-
-        pageSubtitleLabel.setForeground(
-                SUBTEXT
-        );
-
-        pageSubtitleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        11
-                )
-        );
-
-
-        JPanel pageInfo =
-                new JPanel();
-
-        pageInfo.setOpaque(false);
-
-        pageInfo.setLayout(
-                new BoxLayout(
-                        pageInfo,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-
-        pageInfo.add(
-                pageTitleLabel
-        );
-
-        pageInfo.add(
-                Box.createVerticalStrut(2)
-        );
-
-        pageInfo.add(
-                pageSubtitleLabel
-        );
-
-
-        pageHeader.add(
-                pageInfo,
-                BorderLayout.WEST
-        );
-
-
-        wrapper.add(
-                pageHeader,
-                BorderLayout.NORTH
-        );
-
 
         contentPanel =
                 new JPanel(
@@ -933,136 +1047,635 @@ public class MainFrame extends JFrame {
                 );
 
         contentPanel.setBackground(
-                BACKGROUND
+                BG_CONTENT
         );
 
-
-        wrapper.add(
+        add(
                 contentPanel,
                 BorderLayout.CENTER
         );
-
-
-        add(
-                wrapper,
-                BorderLayout.CENTER
-        );
     }
 
-
     // ==========================================
-    // CREATE MENU BUTTON
+    // CUSTOM NAVIGATION BUTTON
     // ==========================================
 
-    private JButton createMenuButton(
-            String text
-    ) {
+    private class NavButton
+            extends JButton {
 
-        JButton button =
-                new JButton(text);
+        private final int iconType;
 
-        button.setForeground(
-                new Color(
-                        235,
-                        240,
-                        245
-                )
-        );
+        private String badgeText;
 
-        button.setBackground(
-                BUTTON_COLOR
-        );
+        private final Color badgeColor;
 
-        button.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        13
-                )
-        );
+        private boolean hover;
 
-        button.setHorizontalAlignment(
-                SwingConstants.LEFT
-        );
+        private boolean active;
 
-        button.setFocusPainted(false);
+        NavButton(
+                String text,
+                int iconType,
+                String badgeText,
+                Color badgeColor
+        ) {
 
-        button.setBorderPainted(false);
+            super(text);
 
-        button.setOpaque(true);
+            this.iconType =
+                    iconType;
 
-        button.setCursor(
-                new Cursor(
-                        Cursor.HAND_CURSOR
-                )
-        );
+            this.badgeText =
+                    badgeText;
 
-        button.setBorder(
-                new EmptyBorder(
-                        0,
-                        22,
-                        0,
-                        10
-                )
-        );
+            this.badgeColor =
+                    badgeColor;
 
+            setFont(
+                    font(
+                            Font.PLAIN,
+                            13
+                    )
+            );
 
-        button.addMouseListener(
-                new MouseAdapter() {
+            setForeground(
+                    TEXT_MUTED
+            );
 
-                    @Override
-                    public void mouseEntered(
-                            MouseEvent e
-                    ) {
+            setHorizontalAlignment(
+                    SwingConstants.LEFT
+            );
 
-                        if (button.isEnabled()
-                                &&
-                                !button.getBackground()
-                                        .equals(
-                                                BUTTON_ACTIVE
-                                        )) {
+            setBorder(
+                    new EmptyBorder(
+                            0,
+                            42,
+                            0,
+                            12
+                    )
+            );
 
-                            button.setBackground(
-                                    BUTTON_HOVER
-                            );
+            setContentAreaFilled(
+                    false
+            );
+
+            setBorderPainted(
+                    false
+            );
+
+            setFocusPainted(
+                    false
+            );
+
+            setCursor(
+                    Cursor.getPredefinedCursor(
+                            Cursor.HAND_CURSOR
+                    )
+            );
+
+            setAlignmentX(
+                    LEFT_ALIGNMENT
+            );
+
+            setMaximumSize(
+                    new Dimension(
+                            Integer.MAX_VALUE,
+                            40
+                    )
+            );
+
+            setPreferredSize(
+                    new Dimension(
+                            200,
+                            40
+                    )
+            );
+
+            addMouseListener(
+                    new MouseAdapter() {
+
+                        @Override
+                        public void mouseEntered(
+                                MouseEvent e
+                        ) {
+
+                            hover = true;
+
+                            repaint();
+                        }
+
+                        @Override
+                        public void mouseExited(
+                                MouseEvent e
+                        ) {
+
+                            hover = false;
+
+                            repaint();
                         }
                     }
+            );
+        }
 
+        void setBadgeText(
+                String badgeText
+        ) {
 
-                    @Override
-                    public void mouseExited(
-                            MouseEvent e
-                    ) {
+            this.badgeText =
+                    badgeText;
 
-                        if (button.isEnabled()
-                                &&
-                                !button.getBackground()
-                                        .equals(
-                                                BUTTON_ACTIVE
-                                        )) {
+            repaint();
+        }
 
-                            button.setBackground(
-                                    BUTTON_COLOR
-                            );
-                        }
-                    }
-                }
-        );
+        String getBadgeText() {
 
+            return badgeText;
+        }
 
-        return button;
+        void setActive(
+                boolean active
+        ) {
+
+            this.active =
+                    active;
+
+            setFont(
+                    font(
+                            active
+                                    ? Font.BOLD
+                                    : Font.PLAIN,
+                            13
+                    )
+            );
+
+            setForeground(
+                    active
+                            ? Color.WHITE
+                            : TEXT_MUTED
+            );
+
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(
+                Graphics g0
+        ) {
+
+            Graphics2D g =
+                    (Graphics2D) g0.create();
+
+            aa(g);
+
+            // ==================================
+            // BACKGROUND
+            // ==================================
+
+            if (active) {
+
+                g.setColor(
+                        NAV_ACTIVE
+                );
+
+                g.fillRoundRect(
+                        0,
+                        0,
+                        getWidth(),
+                        getHeight(),
+                        12,
+                        12
+                );
+
+            } else if (hover) {
+
+                g.setColor(
+                        NAV_HOVER
+                );
+
+                g.fillRoundRect(
+                        0,
+                        0,
+                        getWidth(),
+                        getHeight(),
+                        12,
+                        12
+                );
+            }
+
+            // ==================================
+            // ICON
+            // ==================================
+
+            g.setColor(
+                    active
+                            ? Color.WHITE
+                            : TEXT_MUTED
+            );
+
+            g.setStroke(
+                    new BasicStroke(
+                            1.5f,
+                            BasicStroke.CAP_ROUND,
+                            BasicStroke.JOIN_ROUND
+                    )
+            );
+
+            int ix = 14;
+
+            int iy =
+                    getHeight() / 2;
+
+            Path2D.Float p =
+                    new Path2D.Float();
+
+            switch (iconType) {
+
+                case 0:
+
+                    g.drawRoundRect(
+                            ix,
+                            iy - 6,
+                            5,
+                            5,
+                            2,
+                            2
+                    );
+
+                    g.drawRoundRect(
+                            ix + 7,
+                            iy - 6,
+                            5,
+                            5,
+                            2,
+                            2
+                    );
+
+                    g.drawRoundRect(
+                            ix,
+                            iy + 1,
+                            5,
+                            5,
+                            2,
+                            2
+                    );
+
+                    g.drawRoundRect(
+                            ix + 7,
+                            iy + 1,
+                            5,
+                            5,
+                            2,
+                            2
+                    );
+
+                    break;
+
+                case 1:
+
+                    p.moveTo(
+                            ix + 6,
+                            iy - 6
+                    );
+
+                    p.lineTo(
+                            ix + 12,
+                            iy + 5
+                    );
+
+                    p.lineTo(
+                            ix,
+                            iy + 5
+                    );
+
+                    p.closePath();
+
+                    g.draw(p);
+
+                    g.drawLine(
+                            ix + 6,
+                            iy - 2,
+                            ix + 6,
+                            iy + 1
+                    );
+
+                    g.drawLine(
+                            ix + 6,
+                            iy + 3,
+                            ix + 6,
+                            iy + 3
+                    );
+
+                    break;
+
+                case 2:
+
+                    g.drawOval(
+                            ix + 3,
+                            iy - 6,
+                            5,
+                            5
+                    );
+
+                    p.moveTo(
+                            ix,
+                            iy + 6
+                    );
+
+                    p.quadTo(
+                            ix + 5,
+                            iy + 1,
+                            ix + 11,
+                            iy + 6
+                    );
+
+                    g.draw(p);
+
+                    break;
+
+                case 3:
+
+                    p.moveTo(
+                            ix,
+                            iy
+                    );
+
+                    p.lineTo(
+                            ix + 6,
+                            iy - 6
+                    );
+
+                    p.lineTo(
+                            ix + 12,
+                            iy
+                    );
+
+                    p.moveTo(
+                            ix + 2,
+                            iy - 2
+                    );
+
+                    p.lineTo(
+                            ix + 2,
+                            iy + 6
+                    );
+
+                    p.lineTo(
+                            ix + 10,
+                            iy + 6
+                    );
+
+                    p.lineTo(
+                            ix + 10,
+                            iy - 2
+                    );
+
+                    g.draw(p);
+
+                    break;
+
+                case 4:
+
+                    p.moveTo(
+                            ix + 6,
+                            iy - 6
+                    );
+
+                    p.lineTo(
+                            ix + 12,
+                            iy - 3
+                    );
+
+                    p.lineTo(
+                            ix + 12,
+                            iy + 4
+                    );
+
+                    p.lineTo(
+                            ix + 6,
+                            iy + 7
+                    );
+
+                    p.lineTo(
+                            ix,
+                            iy + 4
+                    );
+
+                    p.lineTo(
+                            ix,
+                            iy - 3
+                    );
+
+                    p.closePath();
+
+                    p.moveTo(
+                            ix,
+                            iy - 3
+                    );
+
+                    p.lineTo(
+                            ix + 6,
+                            iy
+                    );
+
+                    p.lineTo(
+                            ix + 12,
+                            iy - 3
+                    );
+
+                    p.moveTo(
+                            ix + 6,
+                            iy
+                    );
+
+                    p.lineTo(
+                            ix + 6,
+                            iy + 7
+                    );
+
+                    g.draw(p);
+
+                    break;
+
+                case 5:
+
+                    g.drawLine(
+                            ix,
+                            iy,
+                            ix + 12,
+                            iy
+                    );
+
+                    p.moveTo(
+                            ix + 8,
+                            iy - 4
+                    );
+
+                    p.lineTo(
+                            ix + 12,
+                            iy
+                    );
+
+                    p.lineTo(
+                            ix + 8,
+                            iy + 4
+                    );
+
+                    g.draw(p);
+
+                    break;
+
+                case 6:
+
+                    p.moveTo(
+                            ix + 2,
+                            iy - 6
+                    );
+
+                    p.lineTo(
+                            ix + 7,
+                            iy - 6
+                    );
+
+                    p.lineTo(
+                            ix + 10,
+                            iy - 3
+                    );
+
+                    p.lineTo(
+                            ix + 10,
+                            iy + 6
+                    );
+
+                    p.lineTo(
+                            ix + 2,
+                            iy + 6
+                    );
+
+                    p.closePath();
+
+                    p.moveTo(
+                            ix + 7,
+                            iy - 6
+                    );
+
+                    p.lineTo(
+                            ix + 7,
+                            iy - 3
+                    );
+
+                    p.lineTo(
+                            ix + 10,
+                            iy - 3
+                    );
+
+                    g.draw(p);
+
+                    g.drawLine(
+                            ix + 4,
+                            iy + 1,
+                            ix + 8,
+                            iy + 1
+                    );
+
+                    g.drawLine(
+                            ix + 4,
+                            iy + 3,
+                            ix + 8,
+                            iy + 3
+                    );
+
+                    break;
+            }
+
+            // ==================================
+            // BADGE
+            // ==================================
+
+            if (
+                    badgeText != null
+                            &&
+                            badgeColor != null
+            ) {
+
+                g.setFont(
+                        font(
+                                Font.BOLD,
+                                10
+                        )
+                );
+
+                FontMetrics fm =
+                        g.getFontMetrics();
+
+                int bw =
+                        Math.max(
+                                16,
+                                fm.stringWidth(
+                                        badgeText
+                                ) + 8
+                        );
+
+                int bx =
+                        getWidth()
+                                - bw
+                                - 12;
+
+                int by =
+                        (
+                                getHeight()
+                                        - 16
+                        ) / 2;
+
+                g.setColor(
+                        badgeColor
+                );
+
+                g.fillRoundRect(
+                        bx,
+                        by,
+                        bw,
+                        16,
+                        16,
+                        16
+                );
+
+                g.setColor(
+                        Color.WHITE
+                );
+
+                g.drawString(
+                        badgeText,
+                        bx
+                                +
+                                (
+                                        bw
+                                                -
+                                                fm.stringWidth(
+                                                        badgeText
+                                                )
+                                ) / 2,
+                        by + 12
+                );
+            }
+
+            g.dispose();
+
+            super.paintComponent(
+                    g0
+            );
+        }
     }
-
 
     // ==========================================
     // ACTIVE MENU
     // ==========================================
 
-    private void setActiveButton(
-            JButton activeButton
+    private void setActiveMenu(
+            NavButton activeBtn
     ) {
 
-        JButton[] buttons = {
+        NavButton[] btns = {
+
                 dashboardButton,
                 disasterButton,
                 victimButton,
@@ -1072,91 +1685,138 @@ public class MainFrame extends JFrame {
                 reportsButton
         };
 
+        for (NavButton b : btns) {
 
-        for (JButton button : buttons) {
-
-            button.setBackground(
-                    BUTTON_COLOR
-            );
-
-            button.setForeground(
-                    new Color(
-                            235,
-                            240,
-                            245
-                    )
+            b.setActive(
+                    b == activeBtn
             );
         }
-
-
-        activeButton.setBackground(
-                BUTTON_ACTIVE
-        );
-
-        activeButton.setForeground(
-                Color.WHITE
-        );
     }
 
-
     // ==========================================
-    // PAGE HEADER
+    // ROLE PERMISSIONS
     // ==========================================
 
-    private void updatePageHeader(
-            String title,
-            String subtitle
-    ) {
+    private void applyRolePermissions() {
 
-        pageTitleLabel.setText(
-                title
-        );
+        if (
+                currentUser == null
+                        ||
+                        currentUser.getRole() == null
+        ) {
 
-        pageSubtitleLabel.setText(
-                subtitle
-        );
+            return;
+        }
+
+        String role =
+                currentUser
+                        .getRole()
+                        .trim()
+                        .toUpperCase();
+
+        if (role.equals("USER")) {
+
+            disasterButton.setVisible(false);
+            victimButton.setVisible(false);
+            shelterButton.setVisible(false);
+            resourceButton.setVisible(false);
+            evacuationButton.setVisible(false);
+            reportsButton.setVisible(false);
+
+            dashboardButton.setVisible(true);
+
+            return;
+        }
+
+        if (
+                role.equals(
+                        "MEDICAL_TEAM"
+                )
+        ) {
+
+            disasterButton.setVisible(
+                    false
+            );
+
+            shelterButton.setVisible(
+                    false
+            );
+
+            resourceButton.setVisible(
+                    false
+            );
+
+            reportsButton.setVisible(
+                    false
+            );
+        }
     }
 
-
     // ==========================================
-    // DASHBOARD
+    // VIEW SWITCHERS
     // ==========================================
 
     private void showDashboard() {
+        updateSidebarCounts();
 
-        setActiveButton(
+        setActiveMenu(
                 dashboardButton
-        );
-
-        updatePageHeader(
-                "Dashboard",
-                "Overview of emergency response operations"
         );
 
         contentPanel.removeAll();
 
-        contentPanel.add(
-                new DashboardPanel(),
-                BorderLayout.CENTER
-        );
+        String role =
+                currentUser != null
+                        ? currentUser.getRole()
+                        : null;
+
+        if (role != null && role.trim().equalsIgnoreCase("USER")) {
+
+            userDashboardPanel =
+                    new UserDashboardPanel(
+                            currentUser
+                    );
+
+            contentPanel.add(
+                    userDashboardPanel,
+                    BorderLayout.CENTER
+            );
+
+        } else {
+
+            dashboardPanel =
+                    new DashboardPanel(
+                            systemMonitor
+                    );
+
+            contentPanel.add(
+                    dashboardPanel,
+                    BorderLayout.CENTER
+            );
+
+            EarthquakeData latestEarthquake =
+                    systemMonitor.getLatestEarthquake();
+
+            if (
+                    latestEarthquake != null
+            ) {
+
+                dashboardPanel
+                        .updateLatestEarthquake(
+                                latestEarthquake
+                        );
+            }
+        }
 
         refreshContent();
     }
 
-
-    // ==========================================
-    // DISASTERS
-    // ==========================================
-
     private void showDisasters() {
+        updateSidebarCounts();
 
-        setActiveButton(
+
+        setActiveMenu(
                 disasterButton
-        );
-
-        updatePageHeader(
-                "Disaster Management",
-                "Monitor and manage active disaster incidents"
         );
 
         contentPanel.removeAll();
@@ -1169,20 +1829,12 @@ public class MainFrame extends JFrame {
         refreshContent();
     }
 
-
-    // ==========================================
-    // VICTIMS
-    // ==========================================
-
     private void showVictims() {
+        updateSidebarCounts();
 
-        setActiveButton(
+
+        setActiveMenu(
                 victimButton
-        );
-
-        updatePageHeader(
-                "Victim Management",
-                "Manage registered victims and evacuation priorities"
         );
 
         contentPanel.removeAll();
@@ -1195,20 +1847,12 @@ public class MainFrame extends JFrame {
         refreshContent();
     }
 
-
-    // ==========================================
-    // SHELTERS
-    // ==========================================
-
     private void showShelters() {
+        updateSidebarCounts();
 
-        setActiveButton(
+
+        setActiveMenu(
                 shelterButton
-        );
-
-        updatePageHeader(
-                "Shelter Management",
-                "Monitor shelter capacity and occupancy"
         );
 
         contentPanel.removeAll();
@@ -1221,20 +1865,12 @@ public class MainFrame extends JFrame {
         refreshContent();
     }
 
-
-    // ==========================================
-    // RESOURCES
-    // ==========================================
-
     private void showResources() {
+        updateSidebarCounts();
 
-        setActiveButton(
+
+        setActiveMenu(
                 resourceButton
-        );
-
-        updatePageHeader(
-                "Resource Management",
-                "Track emergency supplies and availability"
         );
 
         contentPanel.removeAll();
@@ -1247,20 +1883,12 @@ public class MainFrame extends JFrame {
         refreshContent();
     }
 
-
-    // ==========================================
-    // EVACUATIONS
-    // ==========================================
-
     private void showEvacuations() {
+        updateSidebarCounts();
 
-        setActiveButton(
+
+        setActiveMenu(
                 evacuationButton
-        );
-
-        updatePageHeader(
-                "Evacuation Management",
-                "Create and monitor intelligent evacuation assignments"
         );
 
         contentPanel.removeAll();
@@ -1273,19 +1901,12 @@ public class MainFrame extends JFrame {
         refreshContent();
     }
 
-    // ==========================================
-    // REPORTS
-    // ==========================================
-
     private void showReports() {
+        updateSidebarCounts();
 
-        setActiveButton(
+
+        setActiveMenu(
                 reportsButton
-        );
-
-        updatePageHeader(
-                "Reports & Analytics",
-                "Real-time emergency response statistics"
         );
 
         contentPanel.removeAll();
@@ -1298,9 +1919,8 @@ public class MainFrame extends JFrame {
         refreshContent();
     }
 
-
     // ==========================================
-    // REFRESH
+    // REFRESH CONTENT
     // ==========================================
 
     private void refreshContent() {
@@ -1309,7 +1929,6 @@ public class MainFrame extends JFrame {
 
         contentPanel.repaint();
     }
-
 
     // ==========================================
     // LOGOUT
@@ -1326,9 +1945,19 @@ public class MainFrame extends JFrame {
                         JOptionPane.QUESTION_MESSAGE
                 );
 
+        if (
+                result
+                        ==
+                        JOptionPane.YES_OPTION
+        ) {
 
-        if (result ==
-                JOptionPane.YES_OPTION) {
+            stopSidebarCountRefresh();
+
+            if (userDashboardPanel != null) {
+                userDashboardPanel.stopRefresh();
+            }
+
+            systemMonitor.stopAll();
 
             dispose();
 
@@ -1338,15 +1967,88 @@ public class MainFrame extends JFrame {
                         LoginFrame loginFrame =
                                 new LoginFrame();
 
-                        loginFrame.setVisible(true);
+                        loginFrame.setVisible(
+                                true
+                        );
                     }
             );
         }
     }
 
+    // ==========================================
+    // EARTHQUAKE GUI ALERT
+    // ==========================================
+
+    private void showEarthquakeAlert(
+            EarthquakeData earthquake
+    ) {
+
+        if (
+                earthquake == null
+        ) {
+
+            return;
+        }
+
+        SwingUtilities.invokeLater(
+                () -> {
+
+                    if (
+                            dashboardPanel != null
+                    ) {
+
+                        dashboardPanel
+                                .updateLatestEarthquake(
+                                        earthquake
+                                );
+                    }
+
+                    if (userDashboardPanel != null) {
+
+                        userDashboardPanel
+                                .updateEarthquake(
+                                        earthquake
+                                );
+                    }
+
+                    recentEarthquakeAlerts.add(
+                            earthquake
+                    );
+
+                    if (
+                            recentEarthquakeAlerts.size()
+                                    > 20
+                    ) {
+
+                        recentEarthquakeAlerts.remove(
+                                0
+                        );
+                    }
+
+                    /*
+                     * Victim records may have been
+                     * created by the earthquake
+                     * test workflow.
+                     */
+                    System.out.println();
+
+                    System.out.println(
+                            "[GUI] Earthquake alert received: "
+                                    + earthquake.getPlace()
+                    );
+
+                    System.out.println(
+                            "[GUI] Magnitude: "
+                                    + earthquake.getMagnitude()
+                    );
+
+                    System.out.println();
+                }
+        );
+    }
 
     // ==========================================
-    // MAIN - TESTING ONLY
+    // MAIN
     // ==========================================
 
     public static void main(
@@ -1360,14 +2062,12 @@ public class MainFrame extends JFrame {
 
                         UIManager.setLookAndFeel(
                                 UIManager
-                                        .getSystemLookAndFeelClassName()
+                                        .getCrossPlatformLookAndFeelClassName()
                         );
 
                     } catch (Exception ignored) {
                     }
 
-
-                    // Test user
                     User testUser =
                             new User();
 
@@ -1380,16 +2080,17 @@ public class MainFrame extends JFrame {
                     );
 
                     testUser.setRole(
-                            "ADMIN"
+                            "Admin"
                     );
-
 
                     MainFrame frame =
                             new MainFrame(
                                     testUser
                             );
 
-                    frame.setVisible(true);
+                    frame.setVisible(
+                            true
+                    );
                 }
         );
     }

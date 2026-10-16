@@ -1,11 +1,13 @@
 package com.disaster.service;
 
 import com.disaster.database.DBConnection;
+import com.disaster.model.Evacuation;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class EvacuationProcessingThread implements Runnable {
 
@@ -15,6 +17,24 @@ public class EvacuationProcessingThread implements Runnable {
     private Thread processingThread;
 
     private int previousPendingCount = -1;
+
+    // ==========================================
+    // GUI EVACUATION LISTENER
+    // ==========================================
+
+    private Consumer<Evacuation> evacuationListener;
+
+
+    // ==========================================
+    // SET LISTENER
+    // ==========================================
+
+    public void setEvacuationListener(
+            Consumer<Evacuation> listener
+    ) {
+
+        this.evacuationListener = listener;
+    }
 
 
     // ==========================================
@@ -186,7 +206,7 @@ public class EvacuationProcessingThread implements Runnable {
 
 
                     // ==========================================
-                    // NEW PENDING EVACUATIONS
+                    // NEW PENDING EVACUATION
                     // ==========================================
 
                     if (pendingCount >
@@ -196,6 +216,29 @@ public class EvacuationProcessingThread implements Runnable {
                                 "[Evacuation Processing] " +
                                         "New evacuation assignment detected."
                         );
+
+                        Evacuation evacuation =
+                                getLatestPendingEvacuation();
+
+                        if (evacuation != null) {
+
+                            System.out.println(
+                                    "[Evacuation Processing] " +
+                                            "Evacuation ID: "
+                                            + evacuation.getEvacuationId()
+                            );
+
+                            // ==================================
+                            // SEND TO GUI
+                            // ==================================
+
+                            if (evacuationListener != null) {
+
+                                evacuationListener.accept(
+                                        evacuation
+                                );
+                            }
+                        }
                     }
 
 
@@ -226,6 +269,103 @@ public class EvacuationProcessingThread implements Runnable {
                             + e.getMessage()
             );
         }
+    }
+
+
+    // ==========================================
+    // GET LATEST PENDING EVACUATION
+    // ==========================================
+
+    private Evacuation getLatestPendingEvacuation() {
+
+        String sql =
+                "SELECT * " +
+                        "FROM evacuations " +
+                        "WHERE status = 'PENDING' " +
+                        "ORDER BY evacuation_id DESC " +
+                        "LIMIT 1";
+
+
+        try (
+                Connection connection =
+                        DBConnection.getConnection();
+
+                PreparedStatement statement =
+                        connection.prepareStatement(sql);
+
+                ResultSet resultSet =
+                        statement.executeQuery()
+        ) {
+
+            if (resultSet.next()) {
+
+                Evacuation evacuation =
+                        new Evacuation();
+
+                evacuation.setEvacuationId(
+                        resultSet.getInt(
+                                "evacuation_id"
+                        )
+                );
+
+                evacuation.setVictimId(
+                        resultSet.getInt(
+                                "victim_id"
+                        )
+                );
+
+                evacuation.setShelterId(
+                        resultSet.getInt(
+                                "shelter_id"
+                        )
+                );
+
+                evacuation.setResourceId(
+                        resultSet.getInt(
+                                "resource_id"
+                        )
+                );
+
+                evacuation.setPriorityScore(
+                        resultSet.getInt(
+                                "priority_score"
+                        )
+                );
+
+                evacuation.setStatus(
+                        resultSet.getString(
+                                "status"
+                        )
+                );
+
+                /*
+                 * evacuation_time is a LocalDateTime
+                 * in your Evacuation model.
+                 */
+                if (resultSet.getTimestamp(
+                        "evacuation_time"
+                ) != null) {
+
+                    evacuation.setEvacuationTime(
+                            resultSet.getTimestamp(
+                                    "evacuation_time"
+                            ).toLocalDateTime()
+                    );
+                }
+
+                return evacuation;
+            }
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "[Evacuation Processing] " +
+                            "Unable to load latest evacuation: "
+                            + e.getMessage()
+            );
+        }
+
+        return null;
     }
 
 

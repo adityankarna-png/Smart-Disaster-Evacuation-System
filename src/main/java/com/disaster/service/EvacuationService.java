@@ -14,4 +14,9 @@ public interface EvacuationService {
             throws VictimNotFoundException,
             NoShelterAvailableException,
             NoResourceAvailableException;
+
+    Evacuation createEmergencyEvacuation()
+            throws VictimNotFoundException,
+            NoShelterAvailableException,
+            NoResourceAvailableException;
 }

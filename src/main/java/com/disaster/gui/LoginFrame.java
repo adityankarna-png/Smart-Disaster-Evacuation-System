@@ -7,1023 +7,397 @@ import com.disaster.service.AuthenticationServiceImpl;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class LoginFrame extends JFrame {
 
     // ==========================================
-    // COLORS
+    // COLORS - Premium Modern Palette
     // ==========================================
-
-    private static final Color HEADER_COLOR =
-            new Color(25, 55, 90);
-
-    private static final Color BACKGROUND =
-            new Color(245, 247, 250);
-
-    private static final Color CARD_COLOR =
-            Color.WHITE;
-
-    private static final Color PRIMARY =
-            new Color(55, 105, 155);
-
-    private static final Color PRIMARY_HOVER =
-            new Color(45, 90, 140);
-
-    private static final Color TEXT =
-            new Color(35, 45, 55);
-
-    private static final Color SUBTEXT =
-            new Color(105, 115, 125);
-
-    private static final Color BORDER =
-            new Color(215, 220, 225);
-
-    private static final Color ERROR =
-            new Color(205, 65, 65);
-
-    private static final Color SUCCESS =
-            new Color(40, 150, 90);
-
+    private static final Color HEADER_COLOR = new Color(24, 33, 47);    // Deep Navy
+    private static final Color BACKGROUND = new Color(240, 242, 245);   // Soft Gray
+    private static final Color CARD_COLOR = Color.WHITE;
+    private static final Color PRIMARY = new Color(41, 128, 185);       // Action Blue
+    private static final Color PRIMARY_HOVER = new Color(31, 97, 141);  // Darker Action Blue
+    private static final Color SECONDARY = new Color(236, 240, 241);    // Light Gray Btn
+    private static final Color SECONDARY_HOVER = new Color(208, 211, 212);
+    private static final Color TEXT = new Color(44, 62, 80);            // Slate Dark
+    private static final Color SUBTEXT = new Color(127, 140, 141);      // Slate Light
+    private static final Color BORDER = new Color(222, 221, 225);       // Soft Border
+    private static final Color ERROR = new Color(231, 76, 60);          // Red
+    private static final Color SUCCESS = new Color(46, 204, 113);       // Green
 
     // ==========================================
     // COMPONENTS
     // ==========================================
-
-    private JTextField usernameField;
-
-    private JPasswordField passwordField;
-
+    private RoundedTextField usernameField;
+    private RoundedPasswordField passwordField;
     private JLabel messageLabel;
-
-    private JButton loginButton;
-
-    private JButton clearButton;
-
-
-    // ==========================================
-    // SERVICE
-    // ==========================================
-
+    private RoundedButton loginButton;
+    private RoundedButton clearButton;
     private final AuthenticationService authenticationService;
 
-
-    // ==========================================
-    // CONSTRUCTOR
-    // ==========================================
-
     public LoginFrame() {
+        authenticationService = new AuthenticationServiceImpl();
 
-        authenticationService =
-                new AuthenticationServiceImpl();
-
-        setTitle(
-                "Smart Disaster Evacuation System - Login"
-        );
-
-        setSize(
-                520,
-                650
-        );
-
-        setMinimumSize(
-                new Dimension(480, 600)
-        );
-
-        setDefaultCloseOperation(
-                JFrame.EXIT_ON_CLOSE
-        );
-
+        setTitle("Smart Disaster Evacuation System - Login");
+        setSize(500, 720);
+        setMinimumSize(new Dimension(480, 680));
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
         setResizable(false);
 
         buildUI();
     }
 
-
-    // ==========================================
-    // BUILD UI
-    // ==========================================
-
     private void buildUI() {
-
-        JPanel mainPanel =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-        mainPanel.setBackground(
-                BACKGROUND
-        );
-
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(BACKGROUND);
 
         // ==========================================
         // HEADER
         // ==========================================
+        JPanel headerPanel = new JPanel();
+        headerPanel.setBackground(HEADER_COLOR);
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBorder(new EmptyBorder(35, 25, 35, 25));
 
-        JPanel headerPanel =
-                new JPanel();
+        JLabel titleLabel = new JLabel("SMART DISASTER");
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
 
-        headerPanel.setBackground(
-                HEADER_COLOR
-        );
+        JLabel titleLabel2 = new JLabel("EVACUATION SYSTEM");
+        titleLabel2.setAlignmentX(Component.CENTER_ALIGNMENT);
+        titleLabel2.setForeground(Color.WHITE);
+        titleLabel2.setFont(new Font("Segoe UI", Font.BOLD, 28));
 
-        headerPanel.setLayout(
-                new BoxLayout(
-                        headerPanel,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-        headerPanel.setBorder(
-                new EmptyBorder(
-                        32,
-                        25,
-                        30,
-                        25
-                )
-        );
-
-
-        JLabel titleLabel =
-                new JLabel(
-                        "SMART DISASTER"
-                );
-
-        titleLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        titleLabel.setForeground(
-                Color.WHITE
-        );
-
-        titleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        27
-                )
-        );
-
-
-        JLabel titleLabel2 =
-                new JLabel(
-                        "EVACUATION SYSTEM"
-                );
-
-        titleLabel2.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        titleLabel2.setForeground(
-                Color.WHITE
-        );
-
-        titleLabel2.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        27
-                )
-        );
-
-
-        JLabel subtitleLabel =
-                new JLabel(
-                        "Emergency Response Management"
-                );
-
-        subtitleLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        subtitleLabel.setForeground(
-                new Color(205, 220, 235)
-        );
-
-        subtitleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        13
-                )
-        );
-
+        JLabel subtitleLabel = new JLabel("Emergency Response Management");
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        subtitleLabel.setForeground(new Color(149, 165, 166));
+        subtitleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 15));
 
         headerPanel.add(titleLabel);
-
-        headerPanel.add(
-                Box.createVerticalStrut(2)
-        );
-
+        headerPanel.add(Box.createVerticalStrut(5));
         headerPanel.add(titleLabel2);
-
-        headerPanel.add(
-                Box.createVerticalStrut(10)
-        );
-
+        headerPanel.add(Box.createVerticalStrut(15));
         headerPanel.add(subtitleLabel);
 
-
-        mainPanel.add(
-                headerPanel,
-                BorderLayout.NORTH
-        );
-
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
 
         // ==========================================
-        // LOGIN CARD
+        // CENTER AREA (Wrapper for the Card)
         // ==========================================
-
-        JPanel centerPanel =
-                new JPanel(
-                        new GridBagLayout()
-                );
-
-        centerPanel.setBackground(
-                BACKGROUND
-        );
-
-
-        JPanel loginCard =
-                new JPanel();
-
-        loginCard.setBackground(
-                CARD_COLOR
-        );
-
-        loginCard.setLayout(
-                new BoxLayout(
-                        loginCard,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-        loginCard.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                BORDER
-                        ),
-                        new EmptyBorder(
-                                32,
-                                38,
-                                32,
-                                38
-                        )
-                )
-        );
-
+        JPanel centerPanel = new JPanel(new GridBagLayout());
+        centerPanel.setBackground(BACKGROUND);
 
         // ==========================================
-        // LOGIN TITLE
+        // ROUNDED LOGIN CARD
         // ==========================================
+        RoundedPanel loginCard = new RoundedPanel(20); // 20px border radius
+        loginCard.setBackground(CARD_COLOR);
+        loginCard.setLayout(new GridBagLayout()); // GridBag Layout for precise alignment
+        loginCard.setPreferredSize(new Dimension(380, 420));
 
-        JLabel loginTitle =
-                new JLabel(
-                        "Welcome Back"
-                );
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.gridx = 0;
 
-        loginTitle.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
+        // Title
+        gbc.gridy = 0;
+        gbc.insets = new Insets(30, 30, 5, 30);
+        JLabel loginTitle = new JLabel("Welcome Back", SwingConstants.CENTER);
+        loginTitle.setForeground(TEXT);
+        loginTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        loginCard.add(loginTitle, gbc);
 
-        loginTitle.setForeground(
-                TEXT
-        );
+        // Subtitle
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 30, 25, 30);
+        JLabel loginSubtitle = new JLabel("Sign in to access the control center", SwingConstants.CENTER);
+        loginSubtitle.setForeground(SUBTEXT);
+        loginSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        loginCard.add(loginSubtitle, gbc);
 
-        loginTitle.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        22
-                )
-        );
+        // Username Label
+        gbc.gridy = 2;
+        gbc.insets = new Insets(5, 30, 5, 30);
+        JLabel usernameLabel = new JLabel("Username");
+        usernameLabel.setForeground(TEXT);
+        usernameLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        loginCard.add(usernameLabel, gbc);
 
+        // Username Field
+        gbc.gridy = 3;
+        gbc.insets = new Insets(0, 30, 15, 30);
+        usernameField = new RoundedTextField();
+        loginCard.add(usernameField, gbc);
 
-        JLabel loginSubtitle =
-                new JLabel(
-                        "Sign in to access the control center"
-                );
+        // Password Label
+        gbc.gridy = 4;
+        gbc.insets = new Insets(5, 30, 5, 30);
+        JLabel passwordLabel = new JLabel("Password");
+        passwordLabel.setForeground(TEXT);
+        passwordLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        loginCard.add(passwordLabel, gbc);
 
-        loginSubtitle.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
+        // Password Field
+        gbc.gridy = 5;
+        gbc.insets = new Insets(0, 30, 15, 30);
+        passwordField = new RoundedPasswordField();
+        loginCard.add(passwordField, gbc);
 
-        loginSubtitle.setForeground(
-                SUBTEXT
-        );
+        // Message Label
+        gbc.gridy = 6;
+        gbc.insets = new Insets(0, 30, 15, 30);
+        messageLabel = new JLabel(" ", SwingConstants.CENTER);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        loginCard.add(messageLabel, gbc);
 
-        loginSubtitle.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        12
-                )
-        );
-
-
-        loginCard.add(loginTitle);
-
-        loginCard.add(
-                Box.createVerticalStrut(5)
-        );
-
-        loginCard.add(loginSubtitle);
-
-        loginCard.add(
-                Box.createVerticalStrut(28)
-        );
-
-
-        // ==========================================
-        // USERNAME
-        // ==========================================
-
-        JLabel usernameLabel =
-                createFieldLabel(
-                        "Username"
-                );
-
-        loginCard.add(usernameLabel);
-
-        loginCard.add(
-                Box.createVerticalStrut(7)
-        );
-
-
-        usernameField =
-                new JTextField();
-
-        styleTextField(
-                usernameField
-        );
-
-        loginCard.add(
-                usernameField
-        );
-
-        loginCard.add(
-                Box.createVerticalStrut(18)
-        );
-
-
-        // ==========================================
-        // PASSWORD
-        // ==========================================
-
-        JLabel passwordLabel =
-                createFieldLabel(
-                        "Password"
-                );
-
-        loginCard.add(passwordLabel);
-
-        loginCard.add(
-                Box.createVerticalStrut(7)
-        );
-
-
-        passwordField =
-                new JPasswordField();
-
-        styleTextField(
-                passwordField
-        );
-
-        loginCard.add(
-                passwordField
-        );
-
-        loginCard.add(
-                Box.createVerticalStrut(12)
-        );
-
-
-        // ==========================================
-        // MESSAGE
-        // ==========================================
-
-        messageLabel =
-                new JLabel(
-                        " "
-                );
-
-        messageLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        messageLabel.setHorizontalAlignment(
-                SwingConstants.CENTER
-        );
-
-        messageLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        12
-                )
-        );
-
-        loginCard.add(messageLabel);
-
-        loginCard.add(
-                Box.createVerticalStrut(12)
-        );
-
-
-        // ==========================================
-        // BUTTONS
-        // ==========================================
-
-        JPanel buttonPanel =
-                new JPanel(
-                        new GridLayout(
-                                1,
-                                2,
-                                10,
-                                0
-                        )
-                );
-
+        // Buttons Panel
+        gbc.gridy = 7;
+        gbc.insets = new Insets(0, 30, 20, 30);
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 15, 0));
         buttonPanel.setOpaque(false);
+        buttonPanel.setPreferredSize(new Dimension(320, 45));
 
-        buttonPanel.setMaximumSize(
-                new Dimension(
-                        Integer.MAX_VALUE,
-                        42
-                )
-        );
-
-
-        loginButton =
-                createPrimaryButton(
-                        "LOGIN"
-                );
-
-        clearButton =
-                createSecondaryButton(
-                        "CLEAR"
-                );
-
+        loginButton = new RoundedButton("LOGIN", PRIMARY, PRIMARY_HOVER, Color.WHITE);
+        clearButton = new RoundedButton("CLEAR", SECONDARY, SECONDARY_HOVER, TEXT);
 
         buttonPanel.add(loginButton);
         buttonPanel.add(clearButton);
+        loginCard.add(buttonPanel, gbc);
 
+        // Demo Accounts
+        gbc.gridy = 8;
+        gbc.insets = new Insets(10, 30, 5, 30);
+        JLabel demoTitle = new JLabel("Available Demo Accounts", SwingConstants.CENTER);
+        demoTitle.setForeground(SUBTEXT);
+        demoTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        loginCard.add(demoTitle, gbc);
 
-        loginCard.add(buttonPanel);
+        gbc.gridy = 9;
+        gbc.insets = new Insets(0, 30, 30, 30);
+        JLabel demoText = new JLabel("<html><center>Admin: admin / admin123<br>Rescue: rescue / rescue123</center></html>", SwingConstants.CENTER);
+        demoText.setForeground(SUBTEXT);
+        demoText.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        loginCard.add(demoText, gbc);
 
-
-        // ==========================================
-        // DEMO ACCOUNTS
-        // ==========================================
-
-        loginCard.add(
-                Box.createVerticalStrut(25)
-        );
-
-
-        JLabel demoTitle =
-                new JLabel(
-                        "Available Demo Accounts"
-                );
-
-        demoTitle.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        demoTitle.setForeground(
-                SUBTEXT
-        );
-
-        demoTitle.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        11
-                )
-        );
-
-
-        JLabel demoText =
-                new JLabel(
-                        "<html><center>" +
-                                "Admin: admin / admin123<br>" +
-                                "Rescue: rescue / rescue123<br>" +
-                                "Medical: medical / medical123" +
-                                "</center></html>"
-                );
-
-        demoText.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        demoText.setForeground(
-                SUBTEXT
-        );
-
-        demoText.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        10
-                )
-        );
-
-
-        loginCard.add(demoTitle);
-
-        loginCard.add(
-                Box.createVerticalStrut(6)
-        );
-
-        loginCard.add(demoText);
-
-
-        centerPanel.add(
-                loginCard
-        );
-
-
-        mainPanel.add(
-                centerPanel,
-                BorderLayout.CENTER
-        );
-
+        centerPanel.add(loginCard);
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
 
         // ==========================================
         // FOOTER
         // ==========================================
+        JPanel footerPanel = new JPanel(new BorderLayout());
+        footerPanel.setBackground(HEADER_COLOR);
+        footerPanel.setBorder(new EmptyBorder(12, 15, 12, 15));
 
-        JPanel footerPanel =
-                new JPanel(
-                        new BorderLayout()
-                );
+        JLabel footerLabel = new JLabel("SMART DISASTER EVACUATION SYSTEM v2.0");
+        footerLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        footerLabel.setForeground(new Color(149, 165, 166));
+        footerLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
 
-        footerPanel.setBackground(
-                HEADER_COLOR
-        );
-
-        footerPanel.setBorder(
-                new EmptyBorder(
-                        9,
-                        15,
-                        9,
-                        15
-                )
-        );
-
-
-        JLabel footerLabel =
-                new JLabel(
-                        "SMART DISASTER EVACUATION SYSTEM"
-                );
-
-        footerLabel.setHorizontalAlignment(
-                SwingConstants.CENTER
-        );
-
-        footerLabel.setForeground(
-                new Color(190, 205, 220)
-        );
-
-        footerLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        9
-                )
-        );
-
-
-        footerPanel.add(
-                footerLabel,
-                BorderLayout.CENTER
-        );
-
-
-        mainPanel.add(
-                footerPanel,
-                BorderLayout.SOUTH
-        );
-
+        footerPanel.add(footerLabel, BorderLayout.CENTER);
+        mainPanel.add(footerPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
-
 
         // ==========================================
         // ACTIONS
         // ==========================================
-
-        loginButton.addActionListener(
-                e -> performLogin()
-        );
-
-        clearButton.addActionListener(
-                e -> clearFields()
-        );
-
-
-        // ENTER KEY
-        getRootPane().setDefaultButton(
-                loginButton
-        );
+        loginButton.addActionListener(e -> performLogin());
+        clearButton.addActionListener(e -> clearFields());
+        getRootPane().setDefaultButton(loginButton);
     }
-
-
-    // ==========================================
-    // FIELD LABEL
-    // ==========================================
-
-    private JLabel createFieldLabel(
-            String text
-    ) {
-
-        JLabel label =
-                new JLabel(text);
-
-        label.setForeground(
-                TEXT
-        );
-
-        label.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        12
-                )
-        );
-
-        label.setAlignmentX(
-                Component.LEFT_ALIGNMENT
-        );
-
-        return label;
-    }
-
-
-    // ==========================================
-    // TEXT FIELD STYLE
-    // ==========================================
-
-    private void styleTextField(
-            JTextField field
-    ) {
-
-        field.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        13
-                )
-        );
-
-        field.setForeground(
-                TEXT
-        );
-
-        field.setBackground(
-                Color.WHITE
-        );
-
-        field.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                BORDER
-                        ),
-                        new EmptyBorder(
-                                9,
-                                11,
-                                9,
-                                11
-                        )
-                )
-        );
-
-        field.setMaximumSize(
-                new Dimension(
-                        Integer.MAX_VALUE,
-                        40
-                )
-        );
-
-        field.setAlignmentX(
-                Component.LEFT_ALIGNMENT
-        );
-    }
-
-
-    // ==========================================
-    // PRIMARY BUTTON
-    // ==========================================
-
-    private JButton createPrimaryButton(
-            String text
-    ) {
-
-        JButton button =
-                new JButton(text);
-
-        button.setForeground(
-                Color.WHITE
-        );
-
-        button.setBackground(
-                PRIMARY
-        );
-
-        button.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        12
-                )
-        );
-
-        button.setFocusPainted(false);
-
-        button.setBorderPainted(false);
-
-        button.setCursor(
-                new Cursor(
-                        Cursor.HAND_CURSOR
-                )
-        );
-
-        return button;
-    }
-
-
-    // ==========================================
-    // SECONDARY BUTTON
-    // ==========================================
-
-    private JButton createSecondaryButton(
-            String text
-    ) {
-
-        JButton button =
-                new JButton(text);
-
-        button.setForeground(
-                TEXT
-        );
-
-        button.setBackground(
-                new Color(
-                        235,
-                        238,
-                        242
-                )
-        );
-
-        button.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        12
-                )
-        );
-
-        button.setFocusPainted(false);
-
-        button.setBorder(
-                BorderFactory.createLineBorder(
-                        BORDER
-                )
-        );
-
-        button.setCursor(
-                new Cursor(
-                        Cursor.HAND_CURSOR
-                )
-        );
-
-        return button;
-    }
-
-
-    // ==========================================
-    // LOGIN
-    // ==========================================
 
     private void performLogin() {
-
-        String username =
-                usernameField.getText().trim();
-
-        String password =
-                new String(
-                        passwordField.getPassword()
-                );
-
-
-        // ==========================================
-        // VALIDATION
-        // ==========================================
+        String username = usernameField.getText().trim();
+        String password = new String(passwordField.getPassword());
 
         if (username.isEmpty()) {
-
-            showError(
-                    "Please enter your username."
-            );
-
+            showError("Please enter your username.");
             usernameField.requestFocus();
-
             return;
         }
-
-
         if (password.isEmpty()) {
-
-            showError(
-                    "Please enter your password."
-            );
-
+            showError("Please enter your password.");
             passwordField.requestFocus();
-
             return;
         }
-
 
         loginButton.setEnabled(false);
+        messageLabel.setForeground(SUBTEXT);
+        messageLabel.setText("Authenticating...");
 
-        messageLabel.setForeground(
-                SUBTEXT
-        );
-
-        messageLabel.setText(
-                "Authenticating..."
-        );
-
-
-        // ==========================================
-        // AUTHENTICATE
-        // ==========================================
-
-        SwingWorker<User, Void> worker =
-                new SwingWorker<>() {
-
-                    @Override
-                    protected User doInBackground() {
-
-                        return authenticationService.login(
-                                username,
-                                password
-                        );
+        SwingWorker<User, Void> worker = new SwingWorker<>() {
+            @Override
+            protected User doInBackground() {
+                return authenticationService.login(username, password);
+            }
+            @Override
+            protected void done() {
+                try {
+                    User user = get();
+                    if (user != null) {
+                        showSuccess("Login successful.");
+                        openMainFrame(user);
+                    } else {
+                        showError("Invalid username or password.");
+                        passwordField.setText("");
+                        passwordField.requestFocus();
+                        loginButton.setEnabled(true);
                     }
-
-
-                    @Override
-                    protected void done() {
-
-                        try {
-
-                            User user = get();
-
-                            if (user != null) {
-
-                                showSuccess(
-                                        "Login successful."
-                                );
-
-                                openMainFrame(
-                                        user
-                                );
-
-                            } else {
-
-                                showError(
-                                        "Invalid username or password."
-                                );
-
-                                passwordField.setText("");
-
-                                passwordField.requestFocus();
-
-                                loginButton.setEnabled(
-                                        true
-                                );
-                            }
-
-                        } catch (Exception e) {
-
-                            showError(
-                                    "Unable to connect to database."
-                            );
-
-                            e.printStackTrace();
-
-                            loginButton.setEnabled(
-                                    true
-                            );
-                        }
-                    }
-                };
-
-
+                } catch (Exception e) {
+                    showError("Unable to connect to database.");
+                    e.printStackTrace();
+                    loginButton.setEnabled(true);
+                }
+            }
+        };
         worker.execute();
     }
 
-
-    // ==========================================
-    // OPEN MAIN FRAME
-    // ==========================================
-
     private void openMainFrame(User user) {
-
         dispose();
-
-        SwingUtilities.invokeLater(
-                () -> {
-
-                    MainFrame mainFrame =
-                            new MainFrame(user);
-
-                    mainFrame.setVisible(true);
-                }
-        );
+        SwingUtilities.invokeLater(() -> {
+            MainFrame mainFrame = new MainFrame(user);
+            mainFrame.setVisible(true);
+        });
     }
 
-
-    // ==========================================
-    // CLEAR
-    // ==========================================
-
     private void clearFields() {
-
         usernameField.setText("");
-
         passwordField.setText("");
-
         messageLabel.setText(" ");
-
         usernameField.requestFocus();
     }
 
-
-    // ==========================================
-    // ERROR MESSAGE
-    // ==========================================
-
-    private void showError(
-            String message
-    ) {
-
-        messageLabel.setForeground(
-                ERROR
-        );
-
-        messageLabel.setText(
-                message
-        );
+    private void showError(String message) {
+        messageLabel.setForeground(ERROR);
+        messageLabel.setText(message);
     }
 
-
-    // ==========================================
-    // SUCCESS MESSAGE
-    // ==========================================
-
-    private void showSuccess(
-            String message
-    ) {
-
-        messageLabel.setForeground(
-                SUCCESS
-        );
-
-        messageLabel.setText(
-                message
-        );
+    private void showSuccess(String message) {
+        messageLabel.setForeground(SUCCESS);
+        messageLabel.setText(message);
     }
 
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception ignored) {}
+            new LoginFrame().setVisible(true);
+        });
+    }
 
     // ==========================================
-    // MAIN
+    // CUSTOM UI COMPONENTS FOR ROUNDED LOOK
     // ==========================================
 
-    public static void main(
-            String[] args
-    ) {
+    private static class RoundedPanel extends JPanel {
+        private final int radius;
+        public RoundedPanel(int radius) {
+            this.radius = radius;
+            setOpaque(false);
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
 
-        SwingUtilities.invokeLater(
-                () -> {
+    private static class RoundedTextField extends JTextField {
+        private Color currentBorder = new Color(209, 213, 219);
+        public RoundedTextField() {
+            setOpaque(false);
+            setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+            setPreferredSize(new Dimension(300, 42));
+            addFocusListener(new FocusAdapter() {
+                @Override public void focusGained(FocusEvent e) { currentBorder = PRIMARY; repaint(); }
+                @Override public void focusLost(FocusEvent e) { currentBorder = new Color(209, 213, 219); repaint(); }
+            });
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(Color.WHITE);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+            super.paintComponent(g);
+            g2.setColor(currentBorder);
+            g2.setStroke(new BasicStroke(currentBorder == PRIMARY ? 2f : 1f));
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+            g2.dispose();
+        }
+    }
 
-                    try {
+    private static class RoundedPasswordField extends JPasswordField {
+        private Color currentBorder = new Color(209, 213, 219);
+        public RoundedPasswordField() {
+            setOpaque(false);
+            setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+            setPreferredSize(new Dimension(300, 42));
+            addFocusListener(new FocusAdapter() {
+                @Override public void focusGained(FocusEvent e) { currentBorder = PRIMARY; repaint(); }
+                @Override public void focusLost(FocusEvent e) { currentBorder = new Color(209, 213, 219); repaint(); }
+            });
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(Color.WHITE);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+            super.paintComponent(g);
+            g2.setColor(currentBorder);
+            g2.setStroke(new BasicStroke(currentBorder == PRIMARY ? 2f : 1f));
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+            g2.dispose();
+        }
+    }
 
-                        UIManager.setLookAndFeel(
-                                UIManager
-                                        .getSystemLookAndFeelClassName()
-                        );
+    private static class RoundedButton extends JButton {
+        private final Color defaultBg;
+        private final Color hoverBg;
 
-                    } catch (Exception ignored) {
-                    }
+        public RoundedButton(String text, Color bg, Color hoverBg, Color fg) {
+            super(text);
+            this.defaultBg = bg;
+            this.hoverBg = hoverBg;
+            setForeground(fg);
+            setFont(new Font("Segoe UI", Font.BOLD, 13));
+            setContentAreaFilled(false);
+            setFocusPainted(false);
+            setBorderPainted(false);
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-                    LoginFrame frame =
-                            new LoginFrame();
-
-                    frame.setVisible(true);
-                }
-        );
+            addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) { if (isEnabled()) setBackground(hoverBg); repaint(); }
+                @Override public void mouseExited(MouseEvent e) { setBackground(defaultBg); repaint(); }
+            });
+            setBackground(defaultBg);
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+            super.paintComponent(g);
+            g2.dispose();
+        }
     }
 }

@@ -11,38 +11,108 @@ import java.util.List;
 
 public class EvacuationDAO {
 
-    public void addEvacuation(Evacuation evacuation) {
+    public int addEvacuation(Evacuation evacuation) {
 
         String sql = "INSERT INTO evacuations " +
                 "(victim_id, shelter_id, resource_id, priority_score, status, evacuation_time) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (
+                Connection connection =
+                        DBConnection.getConnection();
 
-            statement.setInt(1, evacuation.getVictimId());
-            statement.setInt(2, evacuation.getShelterId());
-            statement.setInt(3, evacuation.getResourceId());
-            statement.setInt(4, evacuation.getPriorityScore());
-            statement.setString(5, evacuation.getStatus());
+                PreparedStatement statement =
+                        connection.prepareStatement(
+                                sql,
+                                java.sql.Statement.RETURN_GENERATED_KEYS
+                        )
+        ) {
+
+            statement.setInt(
+                    1,
+                    evacuation.getVictimId()
+            );
+
+            statement.setInt(
+                    2,
+                    evacuation.getShelterId()
+            );
+
+            statement.setInt(
+                    3,
+                    evacuation.getResourceId()
+            );
+
+            statement.setInt(
+                    4,
+                    evacuation.getPriorityScore()
+            );
+
+            statement.setString(
+                    5,
+                    evacuation.getStatus()
+            );
+
 
             if (evacuation.getEvacuationTime() != null) {
+
                 statement.setTimestamp(
                         6,
-                        java.sql.Timestamp.valueOf(evacuation.getEvacuationTime())
+                        java.sql.Timestamp.valueOf(
+                                evacuation.getEvacuationTime()
+                        )
                 );
+
             } else {
-                statement.setTimestamp(6, null);
+
+                statement.setTimestamp(
+                        6,
+                        null
+                );
             }
 
-            statement.executeUpdate();
 
-            System.out.println("Evacuation added successfully!");
+            int rowsInserted =
+                    statement.executeUpdate();
+
+
+            if (rowsInserted > 0) {
+
+                try (
+                        ResultSet generatedKeys =
+                                statement.getGeneratedKeys()
+                ) {
+
+                    if (generatedKeys.next()) {
+
+                        int generatedId =
+                                generatedKeys.getInt(1);
+
+                        evacuation.setEvacuationId(
+                                generatedId
+                        );
+
+                        System.out.println(
+                                "Evacuation added successfully! "
+                                        + "ID: "
+                                        + generatedId
+                        );
+
+                        return generatedId;
+                    }
+                }
+            }
 
         } catch (Exception e) {
-            System.out.println("Error adding evacuation.");
+
+            System.out.println(
+                    "Error adding evacuation."
+            );
+
             e.printStackTrace();
         }
+
+        return -1;
     }
 
     public List<Evacuation> getAllEvacuations() {
